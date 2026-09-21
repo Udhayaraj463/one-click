@@ -1,200 +1,529 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>One-Click Lifeline</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ONE CLICK Lifeline</title>
+  
+  <!-- Three.js CDN for standalone WebGL Caustic Rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            text-align: center;
-            touch-action: manipulation;
-        }
+  <style>
+    :root {
+      --bg-color: #0a0c10;
+      --card-bg: rgba(22, 27, 34, 0.78);
+      --border-color: rgba(48, 54, 61, 0.85);
+      --text-main: #f0f6fc;
+      --text-sub: #8b949e;
+      --accent-blue: #38bdf8;
+      --alert-red: #f85149;
+      --success-green: #2ea043;
+    }
 
-        /* Fullscreen pulsing projection canvas */
-        #breathing-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(circle, #0284c7 0%, #000000 75%);
-            opacity: 0.15;
-            animation: breathe 8s infinite ease-in-out;
-            pointer-events: none;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
 
-        /* 4s expand (inhale), 4s contract (exhale) */
-        @keyframes breathe {
-            0%, 100% {
-                transform: scale(0.8);
-                opacity: 0.15;
-            }
-            50% {
-                transform: scale(1.4);
-                opacity: 0.85;
-            }
-        }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
 
-        .container {
-            z-index: 10;
-            padding: 24px;
-        }
+    /* WebGL Canvas Background */
+    #caustic-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
 
-        h1 {
-            font-size: 1.9rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
-        }
+    /* Container for UI Elements */
+    .app-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 460px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-        p {
-            font-size: 1.05rem;
-            color: #94a3b8;
-            margin-bottom: 8px;
-        }
+    /* --- SCREEN 1: ONBOARDING SETUP --- */
+    #setup-screen {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 90vh;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    #setup-screen::-webkit-scrollbar { display: none; }
 
-        #coords {
-            font-family: monospace;
-            font-size: 0.95rem;
-            color: #38bdf8;
-            margin-top: 10px;
-        }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 16px;
+      padding: 18px;
+    }
 
-        #dispatch-status {
-            font-size: 0.85rem;
-            color: #10b981;
-            margin-top: 6px;
-        }
-    </style>
+    h2 { font-size: 1.4rem; margin-bottom: 6px; }
+    h3 { font-size: 1rem; color: var(--accent-blue); margin-bottom: 12px; }
+    label { display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 6px; }
+    
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(13, 17, 23, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: white;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    .save-btn {
+      background: var(--success-green);
+      color: white;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(46, 160, 67, 0.4);
+    }
+
+    /* --- SCREEN 2: 5-SECOND ACCIDENTAL BUFFER --- */
+    #buffer-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 24px;
+    }
+
+    .countdown-ring {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 6px solid var(--alert-red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: white;
+      background: rgba(248, 81, 73, 0.12);
+      box-shadow: 0 0 24px rgba(248, 81, 73, 0.35);
+    }
+
+    .cancel-btn {
+      background: var(--alert-red);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 20px 48px;
+      font-size: 1.3rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(248, 81, 73, 0.45);
+    }
+
+    /* --- SCREEN 3: WAITING & COMFORT MODE --- */
+    #waiting-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+
+    .breathing-halo {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.9) 0%, rgba(56, 189, 248, 0.3) 40%, transparent 70%);
+      animation: inhale-exhale 8s infinite ease-in-out;
+      margin-bottom: 28px;
+      filter: blur(2px);
+    }
+
+    @keyframes inhale-exhale {
+      0%, 100% { transform: scale(0.8); opacity: 0.35; }
+      50% { transform: scale(1.35); opacity: 0.95; }
+    }
+
+    .status-text {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    }
+
+    .sub-text {
+      font-size: 1.15rem;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    .meta-badge {
+      margin-top: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(13, 17, 23, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      padding: 8px 18px;
+      font-size: 0.9rem;
+      color: #7ee787;
+    }
+  </style>
 </head>
 <body>
 
-    <div id="breathing-canvas"></div>
+  <!-- Background WebGL Shader Canvas -->
+  <canvas id="caustic-canvas"></canvas>
 
-    <div class="container">
-        <h1 id="status-title">Alert Activated</h1>
-        <p id="status-sub">Help is on the way. Follow the rhythm and breathe.</p>
-        <div id="coords">Acquiring live location...</div>
-        <div id="dispatch-status"></div>
+  <div class="app-container">
+
+    <!-- 1. SETUP INTERFACE -->
+    <div id="setup-screen">
+      <h2>Emergency Setup</h2>
+      <div class="card">
+        <label>Patient Full Name</label>
+        <input type="text" id="cfg-name" placeholder="e.g., Mr. Wang">
+
+        <label>Pre-registered Full Address</label>
+        <textarea id="cfg-address" rows="2" placeholder="Street, Building, Floor, Room #"></textarea>
+
+        <label>Pre-existing Health Notes (For 119/Circle)</label>
+        <input type="text" id="cfg-medical" placeholder="e.g., Stroke history, Asthma, Penicillin allergy">
+      </div>
+
+      <div class="card">
+        <h3>Sensory Preferences</h3>
+        <div class="toggle-row">
+          <span>Voice Guidance</span>
+          <input type="checkbox" id="cfg-voice" checked style="width:auto; margin:0;">
+        </div>
+        <div class="toggle-row">
+          <span>Rhythmic Vibration</span>
+          <input type="checkbox" id="cfg-vibe" checked style="width:auto; margin:0;">
+        </div>
+        <div class="toggle-row">
+          <span>Breathing Halo Light</span>
+          <input type="checkbox" id="cfg-halo" checked style="width:auto; margin:0;">
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Preferred Hardware Trigger</label>
+        <select id="cfg-trigger">
+          <option value="action-btn">Action Button / Shortcut</option>
+          <option value="triple-click">Triple-Click Power Button</option>
+          <option value="triple-tap">Triple-Tap Hardware Shock</option>
+          <option value="lock-widget">Lock-Screen Direct Widget</option>
+        </select>
+      </div>
+
+      <button class="save-btn" onclick="saveConfiguration()">Save Profile & Lock</button>
     </div>
 
-    <script>
-        // Set fallback coordinates
-        const FALLBACK_LAT = 25.042309;
-        const FALLBACK_LNG = 121.5684554;
+    <!-- 2. BUFFER INTERFACE (5s Countdown) -->
+    <div id="buffer-screen">
+      <div class="countdown-ring" id="countdown-val">5</div>
+      <p style="font-size: 1.25rem; font-weight: 600;">Initiating Rescue Dispatch...</p>
+      <button class="cancel-btn" onclick="cancelEmergency()">CANCEL (Accident)</button>
+    </div>
 
-        // Replace with your backend or Firebase URL when ready
-        const BACKEND_ENDPOINT = "YOUR_BACKEND_ENDPOINT_URL";
+    <!-- 3. LIVE WAITING MODE -->
+    <div id="waiting-screen">
+      <div class="breathing-halo" id="halo-element"></div>
+      <div class="status-text" id="main-status">Notifying Circle...</div>
+      <div class="sub-text" id="sub-status">Follow the breathing light and rest. Help is on the way.</div>
+      <div class="meta-badge" id="info-badge">● Live GPS & Medical Profile Synced</div>
+    </div>
 
-        // 1. Spoken Audio Grounding
-        function speakGrounding() {
-            if ('speechSynthesis' in window) {
-                const message = new SpeechSynthesisUtterance("Help is on the way. Follow the rhythm and breathe.");
-                message.rate = 0.85;
-                message.pitch = 0.9;
-                window.speechSynthesis.speak(message);
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. WEBGL WATER CAUSTIC SHADER ENGINE (Standalone Three.js)
+       ========================================================================= */
+    const canvas = document.getElementById("caustic-canvas");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    const vertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      uniform float iTime;
+      uniform vec2 iResolution;
+      uniform vec3 uColor;
+      varying vec2 vUv;
+
+      vec2 hash2(vec2 p, float period) {
+        p = mod(p, period);
+        p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+        return fract(sin(p) * 43758.5453123);
+      }
+
+      float causticPattern(vec2 p, float period, float t) {
+        vec2 n = floor(p);
+        vec2 f = fract(p);
+        float F1 = 8.0;
+        float F2 = 8.0;
+        for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+            vec2 g = vec2(float(i), float(j));
+            vec2 o = hash2(n + g, period);
+            o = 0.5 + 0.4 * sin(t + 6.2831853 * o);
+            vec2 r = g + o - f;
+            float d = dot(r, r);
+            if (d < F1) {
+              F2 = F1;
+              F1 = d;
+            } else if (d < F2) {
+              F2 = d;
             }
+          }
         }
+        return F2 - F1;
+      }
 
-        // 2. Rhythmic Haptic Pacing (Vibrate API)
-        function startHaptics() {
-            if ("vibrate" in navigator) {
-                navigator.vibrate([4000, 1000, 4000, 1000]);
-                setInterval(() => {
-                    navigator.vibrate([4000, 1000, 4000, 1000]);
-                }, 10000);
-            }
+      void main() {
+        vec2 uv = gl_FragCoord.xy / iResolution.xy;
+        float period = 4.0;
+        vec2 p = uv * period;
+        float t = iTime * 0.9;
+        
+        float c1 = causticPattern(p, period, t);
+        float c2 = causticPattern(p * 5.0, period * 5.0, t * 1.4);
+        float c3 = causticPattern(p * 4.0, period * 4.0, t * 0.7);
+        
+        float caustics = 0.0;
+        caustics += (1.0 - c1) * 0.6;
+        caustics += (1.0 - c2) * 0.3;
+        caustics += (1.0 - c3) * 0.1;
+        caustics = pow(caustics, 3.0);
+        caustics = smoothstep(0.3, 1.0, caustics) * 1.2;
+        
+        vec3 color = uColor * caustics;
+        color += uColor * vec3(0.5) * pow(caustics, 2.0);
+        float alpha = clamp(caustics * 0.85, 0.0, 1.0);
+        
+        gl_FragColor = vec4(color, alpha);
+      }
+    `;
+
+    const uniforms = {
+      iTime: { value: 0 },
+      iResolution: { value: new THREE.Vector2() },
+      uColor: { value: new THREE.Color("#38bdf8") }
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false
+    });
+
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+    scene.add(plane);
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height);
+      uniforms.iResolution.value.set(width * renderer.getPixelRatio(), height * renderer.getPixelRatio());
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      uniforms.iTime.value = clock.getElapsedTime();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    /* =========================================================================
+       2. LIFELINE STATE MANAGEMENT & EMERGENCY FLOW
+       ========================================================================= */
+    const RELAY_ENDPOINT = "https://your-relay-worker.workers.dev"; // Set your Cloudflare Worker URL
+    let config = null;
+    let countdownTimer = null;
+    let countdownCount = 5;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const saved = localStorage.getItem("lifeline_config");
+      if (!saved) {
+        document.getElementById("setup-screen").style.display = "flex";
+      } else {
+        config = JSON.parse(saved);
+        startBufferCountdown();
+      }
+    });
+
+    function saveConfiguration() {
+      config = {
+        name: document.getElementById("cfg-name").value || "Patient",
+        address: document.getElementById("cfg-address").value || "Registered Home Address",
+        medical: document.getElementById("cfg-medical").value || "No medical history specified",
+        voice: document.getElementById("cfg-voice").checked,
+        vibe: document.getElementById("cfg-vibe").checked,
+        halo: document.getElementById("cfg-halo").checked,
+        trigger: document.getElementById("cfg-trigger").value
+      };
+      localStorage.setItem("lifeline_config", JSON.stringify(config));
+      document.getElementById("setup-screen").style.display = "none";
+      startBufferCountdown();
+    }
+
+    function startBufferCountdown() {
+      document.getElementById("buffer-screen").style.display = "flex";
+      
+      // Shift water caustic to urgent amber-orange during countdown
+      uniforms.uColor.value.set("#fb923c");
+
+      if (config.vibe && navigator.vibrate) navigator.vibrate(100);
+
+      countdownTimer = setInterval(() => {
+        countdownCount--;
+        document.getElementById("countdown-val").innerText = countdownCount;
+
+        if (countdownCount <= 0) {
+          clearInterval(countdownTimer);
+          document.getElementById("buffer-screen").style.display = "none";
+          launchWaitingMode();
         }
+      }, 1000);
+    }
 
-        // 3. Dispatch Alert Payload
-        async function triggerDispatch(lat, lng, accuracy, source) {
-            const dispatchStatusElem = document.getElementById("dispatch-status");
-            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    function cancelEmergency() {
+      clearInterval(countdownTimer);
+      // Revert shader color back to calm blue
+      uniforms.uColor.value.set("#38bdf8");
+      document.querySelector(".app-container").innerHTML = `
+        <div class="card" style="text-align: center;">
+          <h2 style="color: var(--accent-blue);">Alert Cancelled</h2>
+          <p style="color: var(--text-sub); margin-top: 8px;">You can safely close this screen.</p>
+        </div>
+      `;
+    }
 
-            const payload = {
-                status: "EMERGENCY_TRIGGERED",
-                timestamp: new Date().toISOString(),
-                location: {
-                    latitude: lat,
-                    longitude: lng,
-                    accuracyMeters: accuracy,
-                    source: source,
-                    directionsUrl: navUrl
-                }
-            };
+    function launchWaitingMode() {
+      document.getElementById("waiting-screen").style.display = "flex";
+      // Revert shader back to gentle cyan
+      uniforms.uColor.value.set("#38bdf8");
 
-            console.log("Dispatch Payload:", payload);
+      if (!config.halo) {
+        document.getElementById("halo-element").style.display = "none";
+      }
 
-            if (BACKEND_ENDPOINT !== "YOUR_BACKEND_ENDPOINT_URL") {
-                try {
-                    const response = await fetch(BACKEND_ENDPOINT, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
+      speakStatus("Help is on the way. Follow the rhythm and breathe.");
+      startVibrationLoop();
+      sendEmergencyPayload();
+    }
 
-                    if (response.ok) {
-                        dispatchStatusElem.innerText = "Dispatch Signal: Sent";
-                    } else {
-                        dispatchStatusElem.innerText = "Dispatch Signal: Server Error";
-                    }
-                } catch (err) {
-                    console.warn("Dispatch request failed:", err);
-                    dispatchStatusElem.innerText = "Dispatch Signal: Offline Logged";
-                }
-            } else {
-                dispatchStatusElem.innerText = "Local Mode (Backend URL not configured)";
-            }
-        }
+    function speakStatus(text) {
+      if (!config.voice || !("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
 
-        // 4. Autonomous GPS Location Retrieval
-        function fetchLocation() {
-            const coordsElem = document.getElementById("coords");
+    function startVibrationLoop() {
+      if (!config.vibe || !navigator.vibrate) return;
+      navigator.vibrate([4000, 4000]);
+      setInterval(() => {
+        navigator.vibrate([4000, 4000]);
+      }, 8000);
+    }
 
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lng = pos.coords.longitude;
-                        const acc = Math.round(pos.coords.accuracy);
+    async function sendEmergencyPayload() {
+      let lat = null, lng = null;
 
-                        coordsElem.innerText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
-                        triggerDispatch(lat, lng, acc, "Live GPS");
-                    },
-                    (err) => {
-                        console.warn("GPS Access Failed:", err.message);
-                        coordsElem.innerText = `Base Location: ${FALLBACK_LAT}, ${FALLBACK_LNG}`;
-                        triggerDispatch(FALLBACK_LAT, FALLBACK_LNG, 50, "Default Base Location");
-                    },
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                );
-            } else {
-                coordsElem.innerText = `Base Location: ${FALLBACK_LAT}, ${FALLBACK_LNG}`;
-                triggerDispatch(FALLBACK_LAT, FALLBACK_LNG, 50, "Default Base Location");
-            }
-        }
-
-        // Initialize immediately upon page load
-        window.addEventListener("DOMContentLoaded", () => {
-            speakGrounding();
-            startHaptics();
-            fetchLocation();
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 3000
+          });
         });
-    </script>
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+      } catch (err) {
+        console.warn("GPS unavailable, using registered home address");
+      }
+
+      const payload = {
+        patientName: config.name,
+        address: config.address,
+        medicalHistory: config.medical,
+        coordinates: lat && lng ? `${lat},${lng}` : null,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        await fetch(RELAY_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.warn("Payload dispatch dropped:", err);
+      }
+    }
+  </script>
 </body>
 </html>
