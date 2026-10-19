@@ -14,13 +14,6 @@
             text-align: center; touch-action: manipulation;
         }
 
-        @keyframes flashStrobe { 0%, 100% { opacity: 0; } 50% { opacity: 0.95; } }
-        .strobe-active { animation: flashStrobe 0.25s infinite; }
-        #strobeOverlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: white; pointer-events: none; z-index: 9999; display: none;
-        }
-
         #breathing-canvas {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, #0284c7 0%, #000000 75%);
@@ -35,7 +28,7 @@
         h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
         p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
 
-        /* Modified: Minimalist Bottom Cancel Button */
+        /* Minimalist Bottom Cancel Button */
         #cancelArea {
             position: absolute;
             bottom: 40px;
@@ -87,7 +80,6 @@
 </head>
 <body>
 
-    <div id="strobeOverlay"></div>
     <div id="breathing-canvas"></div>
 
     <div class="container">
@@ -125,30 +117,28 @@
         let isHome = false; 
         let countdown = 5;
         let cancelInterval;
+        let hapticInterval;
         let isCancelled = false;
 
         function startWarningHaptics() {
             if ("vibrate" in navigator) {
-                // One long, continuous 2.5-second vibration to indicate trigger is armed
-                navigator.vibrate(2500); 
+                // Short, rhythmic pulsing vibrations instead of one long one
+                navigator.vibrate([300, 300]); 
+                hapticInterval = setInterval(() => {
+                    navigator.vibrate([300, 300]);
+                }, 600);
             }
         }
 
         function stopHaptics() {
-            if ("vibrate" in navigator) navigator.vibrate(0);
-        }
-
-        function triggerStrobe() {
-            const strobe = document.getElementById("strobeOverlay");
-            strobe.style.display = "block";
-            strobe.classList.add("strobe-active");
-            // Automatically stop strobe after 5 seconds
-            setTimeout(() => { strobe.classList.remove("strobe-active"); strobe.style.display = "none"; }, 5000);
+            if ("vibrate" in navigator) {
+                navigator.vibrate(0);
+            }
+            clearInterval(hapticInterval);
         }
 
         // --- STEP 1: The 5-Second Warning Phase ---
         function initiateWarningPhase() {
-            triggerStrobe();
             startWarningHaptics();
             
             const timerElem = document.getElementById("cancelTimer");
@@ -170,9 +160,6 @@
             clearInterval(cancelInterval);
             stopHaptics();
             
-            document.getElementById("strobeOverlay").style.display = "none";
-            document.getElementById("strobeOverlay").classList.remove("strobe-active");
-            
             document.getElementById("status-title").innerText = "Alert Cancelled";
             document.getElementById("status-title").style.color = "#64748b"; // Muted Slate
             document.getElementById("status-sub").innerText = "No emergency calls were made.";
@@ -181,12 +168,8 @@
 
         // --- STEP 3: Time's Up, Execute Emergency Protocol ---
         function executeDispatch() {
+            // Stop ALL vibration once the dispatch actually starts
             stopHaptics();
-            // Start calming breathing haptics for the active emergency
-            if ("vibrate" in navigator) {
-                navigator.vibrate([4000, 1000, 4000, 1000]);
-                setInterval(() => navigator.vibrate([4000, 1000, 4000, 1000]), 10000);
-            }
 
             // Update UI
             document.getElementById("cancelArea").style.display = "none";
