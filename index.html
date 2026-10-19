@@ -12,7 +12,6 @@
             height: 100vh; display: flex; flex-direction: column;
             justify-content: center; align-items: center; overflow: hidden;
             text-align: center; touch-action: manipulation;
-            cursor: pointer; /* Makes the whole screen feel clickable */
         }
 
         #breathing-canvas {
@@ -25,28 +24,24 @@
             50% { transform: scale(1.4); opacity: 0.85; }
         }
 
-        /* Initial Standby Text */
-        #standby-text {
-            z-index: 10; color: #64748b; font-size: 1.1rem; letter-spacing: 1px;
-            animation: pulseText 2s infinite; pointer-events: none;
+        /* Language Selection Screen */
+        #langScreen {
+            z-index: 50; display: flex; flex-direction: column; gap: 20px;
         }
-        @keyframes pulseText {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+        .lang-btn {
+            background-color: transparent; color: #cbd5e1; border: 1px solid #475569;
+            border-radius: 8px; padding: 16px 48px; font-size: 1.2rem; cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
         }
+        .lang-btn:active { background-color: #334155; color: white; }
 
+        /* Main App Interface */
         .container { z-index: 10; padding: 24px; width: 100%; max-width: 400px; display: none; }
         h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
         p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
 
-        /* Minimalist Bottom Cancel Button */
-        #cancelArea {
-            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none;
-        }
-        #btnCancel {
-            background: transparent; color: #64748b; font-size: 0.95rem; border: none;
-            border-bottom: 1px solid #475569; padding-bottom: 4px; cursor: pointer;
-        }
+        #cancelArea { position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none; }
+        #btnCancel { background: transparent; color: #64748b; font-size: 0.95rem; border: none; border-bottom: 1px solid #475569; padding-bottom: 4px; cursor: pointer; }
         #btnCancel:active { color: #94a3b8; border-color: #94a3b8; }
 
         #coords {
@@ -56,95 +51,167 @@
         }
         #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; }
 
-        .dashboard {
-            display: none; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left;
-        }
+        .dashboard { display: none; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left; }
         .card { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 16px; border-radius: 12px; font-size: 0.9rem; }
         .card-header { font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between;}
         .text-red { color: #f87171; } .text-green { color: #34d399; } .text-slate { color: #cbd5e1; font-size: 0.8rem; }
         
-        .btn-action {
-            width: 100%; padding: 10px; margin-top: 10px; background-color: #1e293b;
-            color: white; border: 1px solid #475569; border-radius: 8px; font-weight: bold; cursor: pointer;
-        }
+        .btn-action { width: 100%; padding: 10px; margin-top: 10px; background-color: #1e293b; color: white; border: 1px solid #475569; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-primary { background-color: #4f46e5; border-color: #4f46e5; }
-        #toggleEnv {
-            margin-top: 20px; background: transparent; color: #818cf8;
-            border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
-        }
+        
+        #toggleEnv { margin-top: 20px; background: transparent; color: #818cf8; border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="breathing-canvas"></div>
-    
-    <!-- Clean Standby Text -->
-    <div id="standby-text">Tap anywhere to simulate hardware trigger</div>
 
-    <!-- Main Alert Container -->
+    <!-- 1. Language Selection Screen -->
+    <div id="langScreen">
+        <button class="lang-btn" onclick="selectLanguage('en')">English</button>
+        <button class="lang-btn" onclick="selectLanguage('zh')">繁體中文</button>
+    </div>
+    
+    <!-- 2. Main Alert Container -->
     <div class="container" id="mainAlert">
-        <h1 id="status-title">Trigger Detected</h1>
-        <p id="status-sub">Preparing to dispatch...</p>
+        <h1 id="status-title"></h1>
+        <p id="status-sub"></p>
         
-        <div id="coords" style="display:none;">Acquiring live location...</div>
+        <div id="coords" style="display:none;"></div>
         <div id="db-status" style="display:none;"></div>
-        <button id="toggleEnv" style="display:none;">Current Mode: Outside (Live GPS)</button>
+        <button id="toggleEnv" style="display:none;"></button>
 
         <div class="dashboard" id="dispatchDashboard">
             <div class="card">
-                <div class="card-header"><span class="text-red">119 Twilio Voice Proxy</span> <span id="twilio-status" class="text-slate">Calling...</span></div>
-                <div id="twilio-log" class="text-slate" style="font-family: monospace;">Dispatching...</div>
+                <div class="card-header"><span class="text-red" id="ui-twilio-header"></span> <span id="twilio-status" class="text-slate"></span></div>
+                <div id="twilio-log" class="text-slate" style="font-family: monospace;"></div>
             </div>
             <div class="card">
-                <div class="card-header"><span class="text-green">LINE Family Group</span> <span class="text-slate">Alert Sent</span></div>
-                <div class="text-slate">119 is notified. Coordinate below:</div>
-                <button id="btnHeadingOver" class="btn-action btn-primary">我正在前往 (I am heading over)</button>
+                <div class="card-header"><span class="text-green" id="ui-line-header"></span> <span class="text-slate" id="ui-line-status"></span></div>
+                <div class="text-slate" id="ui-line-sub"></div>
+                <button id="btnHeadingOver" class="btn-action btn-primary"></button>
             </div>
         </div>
     </div>
 
     <!-- Cancel Option -->
     <div id="cancelArea">
-        <button id="btnCancel">誤觸取消 Cancel (<span id="cancelTimer">5</span>s)</button>
+        <button id="btnCancel"><span id="ui-cancel-text"></span><span id="cancelTimer">5</span><span id="ui-cancel-end"></span></button>
     </div>
 
     <script>
+        // --- Translations Dictionary ---
+        const i18n = {
+            en: {
+                titleTrigger: "Trigger Detected",
+                subTrigger: "Preparing to dispatch...",
+                cancelBtn: "Cancel (",
+                cancelEnd: "s)",
+                titleCancel: "Alert Cancelled",
+                subCancel: "No emergency calls were made.",
+                titleActive: "Dispatch Active",
+                subActive: "Help is on the way. Follow the rhythm and breathe.",
+                twilioHeader: "119 Twilio Voice Proxy",
+                twilioCalling: "Calling...",
+                twilioSpeaking: "Speaking to Operator",
+                twilioDispatching: "Dispatching...",
+                lineHeader: "LINE Family Group",
+                lineSent: "Alert Sent",
+                lineSub: "119 is notified. Coordinate below:",
+                btnHeading: "I am heading over",
+                btnHeadingDone: "✅ Group Notified",
+                gpsAcquiring: "Acquiring live location...",
+                gpsFallback: "GPS unavailable, using fallback.",
+                gpsUnsupported: "Geolocation not supported.",
+                cloudUpdated: "Cloud Sync: Updated",
+                modeOutside: "Current Mode: Outside (Live GPS)",
+                modeHome: "Current Mode: Home (Gate Code)",
+                homeFormat: "Home Detected<br><span style='color:#fcd34d'>Floor 4 | Gate Code: #5821</span>",
+                voiceUser: "Help is on the way. Follow the rhythm and breathe.",
+                voiceTwilioHome: "Emergency 119. Patient is hearing and speech impaired. Location: 4th Floor, Number 18, Section 3, Heping East Road, Xinyi District, Taipei City. Ground floor gate code is hash 5 8 2 1.",
+                voiceTwilioOutside: "Emergency 119. Patient is hearing and speech impaired. Currently outdoors. Please dispatch ambulance based on live GPS coordinates.",
+                langCode: "en-US"
+            },
+            zh: {
+                titleTrigger: "已偵測到觸發",
+                subTrigger: "準備通報...",
+                cancelBtn: "誤觸取消 (",
+                cancelEnd: "秒)",
+                titleCancel: "警報已取消",
+                subCancel: "未撥打任何緊急電話。",
+                titleActive: "救援通報中",
+                subActive: "救援已在路上。請跟隨節奏深呼吸。",
+                twilioHeader: "119 Twilio 語音代答",
+                twilioCalling: "撥號中...",
+                twilioSpeaking: "正在與接線員對話",
+                twilioDispatching: "發送中...",
+                lineHeader: "LINE 親友群組",
+                lineSent: "警報已發送",
+                lineSub: "已同步通知 119。請在下方協調：",
+                btnHeading: "我正在前往",
+                btnHeadingDone: "✅ 已通知群組",
+                gpsAcquiring: "正在獲取即時定位...",
+                gpsFallback: "無法使用 GPS，使用備用定位。",
+                gpsUnsupported: "不支援地理定位。",
+                cloudUpdated: "雲端同步：已更新",
+                modeOutside: "當前模式：戶外 (即時 GPS)",
+                modeHome: "當前模式：居家 (大門密碼)",
+                homeFormat: "偵測到居家環境<br><span style='color:#fcd34d'>4 樓 | 大門密碼：#5821</span>",
+                voiceUser: "救援已在路上。請跟隨節奏深呼吸。",
+                voiceTwilioHome: "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。",
+                voiceTwilioOutside: "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。",
+                langCode: "zh-TW"
+            }
+        };
+
         const FIREBASE_ENDPOINT = "https://YOUR_FIREBASE_DATABASE_URL/latest_location.json";
         
+        let sysLang = 'en'; 
         let isHome = false; 
         let countdown = 5;
         let cancelInterval;
         let hapticInterval;
         let isCancelled = false;
-        let hasTriggered = false;
+        let headingOverClicked = false;
 
-        // Make the whole screen a trigger to bypass browser security
-        document.body.addEventListener("click", (e) => {
-            // Prevent triggering again if already started, or if they are clicking the cancel/toggle buttons
-            if (hasTriggered || e.target.tagName === 'BUTTON') return;
-            
-            hasTriggered = true;
-            document.getElementById("standby-text").style.display = "none";
+        // --- STEP 1: Setup UI Based on Language Selection ---
+        function selectLanguage(lang) {
+            sysLang = lang;
+            const t = i18n[sysLang];
+
+            // Apply translations to UI elements
+            document.getElementById("status-title").innerText = t.titleTrigger;
+            document.getElementById("status-sub").innerText = t.subTrigger;
+            document.getElementById("ui-cancel-text").innerText = t.cancelBtn;
+            document.getElementById("ui-cancel-end").innerText = t.cancelEnd;
+            document.getElementById("ui-twilio-header").innerText = t.twilioHeader;
+            document.getElementById("twilio-status").innerText = t.twilioCalling;
+            document.getElementById("twilio-log").innerText = t.twilioDispatching;
+            document.getElementById("ui-line-header").innerText = t.lineHeader;
+            document.getElementById("ui-line-status").innerText = t.lineSent;
+            document.getElementById("ui-line-sub").innerText = t.lineSub;
+            document.getElementById("btnHeadingOver").innerText = t.btnHeading;
+            document.getElementById("coords").innerText = t.gpsAcquiring;
+            document.getElementById("toggleEnv").innerText = t.modeOutside;
+
+            // Hide Lang Screen, Show App
+            document.getElementById("langScreen").style.display = "none";
             document.getElementById("mainAlert").style.display = "block";
             document.getElementById("cancelArea").style.display = "block";
-            
-            initiateWarningPhase();
-        });
 
+            initiateWarningPhase();
+        }
+
+        // --- Haptics & Timers ---
         function startWarningHaptics() {
             if ("vibrate" in navigator) {
-                // Short buzz pulses
                 navigator.vibrate([300, 300]); 
-                hapticInterval = setInterval(() => {
-                    navigator.vibrate([300, 300]);
-                }, 600);
+                hapticInterval = setInterval(() => { navigator.vibrate([300, 300]); }, 600);
             }
         }
 
         function stopHaptics() {
-            if ("vibrate" in navigator) {
-                navigator.vibrate(0);
-            }
+            if ("vibrate" in navigator) navigator.vibrate(0);
             clearInterval(hapticInterval);
         }
 
@@ -163,24 +230,28 @@
             }, 1000);
         }
 
+        // --- Cancel Logic ---
         document.getElementById("btnCancel").addEventListener("click", () => {
             isCancelled = true;
             clearInterval(cancelInterval);
             stopHaptics();
             
-            document.getElementById("status-title").innerText = "Alert Cancelled";
+            const t = i18n[sysLang];
+            document.getElementById("status-title").innerText = t.titleCancel;
             document.getElementById("status-title").style.color = "#64748b"; 
-            document.getElementById("status-sub").innerText = "No emergency calls were made.";
+            document.getElementById("status-sub").innerText = t.subCancel;
             document.getElementById("cancelArea").style.display = "none";
         });
 
+        // --- Execute Dispatch ---
         function executeDispatch() {
             stopHaptics();
+            const t = i18n[sysLang];
 
             document.getElementById("cancelArea").style.display = "none";
-            document.getElementById("status-title").innerText = "Dispatch Active";
+            document.getElementById("status-title").innerText = t.titleActive;
             document.getElementById("status-title").style.color = "#f87171"; 
-            document.getElementById("status-sub").innerText = "Help is on the way. Follow the rhythm and breathe.";
+            document.getElementById("status-sub").innerText = t.subActive;
             
             document.getElementById("coords").style.display = "block";
             document.getElementById("db-status").style.display = "block";
@@ -192,50 +263,61 @@
         }
 
         function speakGroundingAnd119() {
+            const t = i18n[sysLang];
             if ('speechSynthesis' in window) {
-                const twilioPayload = isHome 
-                    ? "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。"
-                    : "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。";
+                const userMsg = new SpeechSynthesisUtterance(t.voiceUser);
+                userMsg.rate = 0.85; 
+                userMsg.lang = t.langCode;
+                window.speechSynthesis.speak(userMsg);
+
+                const twilioPayload = isHome ? t.voiceTwilioHome : t.voiceTwilioOutside;
                 
                 const twilioMsg = new SpeechSynthesisUtterance(twilioPayload);
-                twilioMsg.lang = 'zh-TW';
+                twilioMsg.lang = t.langCode;
                 window.speechSynthesis.speak(twilioMsg);
 
-                document.getElementById('twilio-status').innerText = "Speaking to Operator";
+                document.getElementById('twilio-status').innerText = t.twilioSpeaking;
                 document.getElementById('twilio-log').innerText = twilioPayload;
             }
         }
 
         function trackLocation() {
             const coordsElem = document.getElementById("coords");
+            const t = i18n[sysLang];
+            
             if ("geolocation" in navigator) {
                 navigator.geolocation.watchPosition(
                     (pos) => {
                         const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = Math.round(pos.coords.accuracy);
                         if(isHome) {
-                            coordsElem.innerHTML = `Home Detected<br><span style="color:#fcd34d">Floor 4 | Gate Code: #5821</span>`;
+                            coordsElem.innerHTML = t.homeFormat;
                         } else {
                             coordsElem.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
                         }
-                        document.getElementById("db-status").innerText = "Cloud Sync: Updated";
+                        document.getElementById("db-status").innerText = t.cloudUpdated;
                     },
-                    (err) => {
-                        coordsElem.innerText = "GPS unavailable, using fallback.";
-                    },
+                    (err) => { coordsElem.innerText = t.gpsFallback; },
                     { enableHighAccuracy: true, maximumAge: 0 }
                 );
-            } else { coordsElem.innerText = "Geolocation not supported."; }
+            } else { coordsElem.innerText = t.gpsUnsupported; }
         }
 
+        // --- Buttons ---
         document.getElementById("toggleEnv").addEventListener("click", (e) => {
             isHome = !isHome;
-            e.target.innerText = isHome ? "Current Mode: Home (Gate Code)" : "Current Mode: Outside (Live GPS)";
-            trackLocation(); speakGroundingAnd119();
+            const t = i18n[sysLang];
+            e.target.innerText = isHome ? t.modeHome : t.modeOutside;
+            trackLocation(); 
+            speakGroundingAnd119();
         });
 
         document.getElementById("btnHeadingOver").addEventListener("click", (e) => {
-            e.target.innerText = "✅ 已通知群組 (Group Notified)";
-            e.target.style.backgroundColor = "#059669"; e.target.style.borderColor = "#059669"; e.target.disabled = true;
+            if(headingOverClicked) return;
+            headingOverClicked = true;
+            e.target.innerText = i18n[sysLang].btnHeadingDone;
+            e.target.style.backgroundColor = "#059669"; 
+            e.target.style.borderColor = "#059669"; 
+            e.target.style.cursor = "default";
         });
     </script>
 </body>
