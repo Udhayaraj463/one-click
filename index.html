@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>One-Click Lifeline Prototype</title>
     <style>
+        :root {
+            --frame: #0F172A;
+            --bg: #000000;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* The Webpage Background (Behind the phone) */
         body {
-            background-color: #f1f5f9; /* Light gray background to make the phone pop */
+            background: #f1f5f9;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
             display: flex;
@@ -18,47 +21,74 @@
             padding: 20px;
         }
 
-        /* The Physical Phone Frame UI */
+        /* Exact Phone Skin from your Reference */
         .phone {
             width: 400px;
             height: 820px;
-            background: #0F172A; /* Dark phone bezel */
+            background: var(--frame);
             border-radius: 52px;
             padding: 12px;
-            box-shadow: 0 30px 60px -20px rgba(15,23,42,0.4);
+            box-shadow: 0 30px 60px -20px rgba(15,23,42,.35);
+            flex: none;
             position: relative;
         }
 
-        /* The Actual Screen of the Phone */
         .screen {
             position: relative;
             width: 100%;
             height: 100%;
-            background-color: #000; /* Your dark theme */
-            color: #ffffff;
+            background: var(--bg);
             border-radius: 42px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
+            color: #ffffff;
         }
 
-        /* Your Breathing Background (Confined to the phone screen) */
+        /* Phone Status Bar (Time/Battery) */
+        .status {
+            height: 44px;
+            flex: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 14px;
+            font-weight: 700;
+            position: relative;
+            z-index: 20;
+        }
+
+        /* App Layout Box to prevent breaking the phone screen */
+        .app-body {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* Your Breathing Background */
         #breathing-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; inset: 0; width: 100%; height: 100%;
             background: radial-gradient(circle, #0284c7 0%, #000000 75%);
-            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none;
+            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none; z-index: 1;
         }
         @keyframes breathe {
             0%, 100% { transform: scale(0.8); opacity: 0.15; }
             50% { transform: scale(1.4); opacity: 0.85; }
         }
 
-        /* Your Language Selection Screen */
+        /* App UI Components */
+        .container { z-index: 10; width: 100%; text-align: center; display: none; }
+        h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
+        p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
+
         #langScreen {
-            z-index: 50; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 0 40px;
+            z-index: 50; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 0 20px;
         }
         .lang-btn {
             background-color: transparent; color: #cbd5e1; border: 1px solid #475569;
@@ -67,23 +97,19 @@
         }
         .lang-btn:active { background-color: #334155; color: white; }
 
-        /* Your Main App Interface */
-        .container { z-index: 10; padding: 24px; width: 100%; display: none; }
-        h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
-        p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
-
-        #cancelArea { position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none; }
+        #cancelArea { 
+            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none; 
+        }
         #btnCancel { background: transparent; color: #64748b; font-size: 0.95rem; border: none; border-bottom: 1px solid #475569; padding-bottom: 4px; cursor: pointer; }
         #btnCancel:active { color: #94a3b8; border-color: #94a3b8; }
 
         #coords {
             font-family: monospace; font-size: 0.95rem; color: #38bdf8;
             margin-top: 10px; background: rgba(15, 23, 42, 0.6); padding: 10px;
-            border-radius: 8px; border: 1px solid #1e293b;
+            border-radius: 8px; border: 1px solid #1e293b; text-align: center;
         }
-        #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; }
+        #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; text-align: center; }
 
-        /* Your Dashboard Cards */
         .dashboard { display: none; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left; }
         .card { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 16px; border-radius: 12px; font-size: 0.9rem; }
         .card-header { font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between;}
@@ -92,59 +118,64 @@
         .btn-action { width: 100%; padding: 12px; margin-top: 10px; background-color: #1e293b; color: white; border: 1px solid #475569; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-primary { background-color: #4f46e5; border-color: #4f46e5; }
         
-        #toggleEnv { margin-top: 20px; background: transparent; color: #818cf8; border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        #toggleEnv { margin-top: 20px; background: transparent; color: #818cf8; border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; display: block; margin: 20px auto 0; }
 
-        /* Responsive scaling for smaller monitors */
-        @media (max-height: 850px) {
-            .phone { transform: scale(0.85); margin-top: -50px; }
+        /* Scaling for small monitors */
+        @media (max-width: 440px) {
+            body { padding: 0; background: #000; }
+            .phone { width: 100vw; height: 100vh; border-radius: 0; padding: 0; border: none; box-shadow: none; }
+            .screen { border-radius: 0; }
+        }
+        @media (max-height: 850px) and (min-width: 441px) {
+            .phone { transform: scale(0.85); }
         }
     </style>
 </head>
 <body>
 
-    <!-- The UI Phone Shell -->
-    <div class="phone">
+    <div class="phone" aria-label="手機畫面示意">
         <div class="screen">
             
-            <div id="breathing-canvas"></div>
+            <!-- Status Bar from Reference -->
+            <div class="status"><span id="clock">9:41</span><span aria-hidden="true">● ● ●</span></div>
 
-            <!-- 1. Language Selection Screen -->
-            <div id="langScreen">
-                <button class="lang-btn" onclick="selectLanguage('en')">English</button>
-                <button class="lang-btn" onclick="selectLanguage('zh')">繁體中文</button>
-            </div>
-            
-            <!-- 2. Main Alert Container -->
-            <div class="container" id="mainAlert">
-                <h1 id="status-title"></h1>
-                <p id="status-sub"></p>
+            <div class="app-body">
+                <div id="breathing-canvas"></div>
+
+                <div id="langScreen">
+                    <button class="lang-btn" onclick="selectLanguage('en')">English</button>
+                    <button class="lang-btn" onclick="selectLanguage('zh')">繁體中文</button>
+                </div>
                 
-                <div id="coords" style="display:none;"></div>
-                <div id="db-status" style="display:none;"></div>
-                <button id="toggleEnv" style="display:none;"></button>
+                <div class="container" id="mainAlert">
+                    <h1 id="status-title"></h1>
+                    <p id="status-sub"></p>
+                    
+                    <div id="coords" style="display:none;"></div>
+                    <div id="db-status" style="display:none;"></div>
+                    <button id="toggleEnv" style="display:none;"></button>
 
-                <div class="dashboard" id="dispatchDashboard">
-                    <div class="card">
-                        <div class="card-header"><span class="text-red" id="ui-twilio-header"></span> <span id="twilio-status" class="text-slate"></span></div>
-                        <div id="twilio-log" class="text-slate" style="font-family: monospace;"></div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header"><span class="text-green" id="ui-line-header"></span> <span class="text-slate" id="ui-line-status"></span></div>
-                        <div class="text-slate" id="ui-line-sub"></div>
-                        <button id="btnHeadingOver" class="btn-action btn-primary"></button>
+                    <div class="dashboard" id="dispatchDashboard">
+                        <div class="card">
+                            <div class="card-header"><span class="text-red" id="ui-twilio-header"></span> <span id="twilio-status" class="text-slate"></span></div>
+                            <div id="twilio-log" class="text-slate" style="font-family: monospace;"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><span class="text-green" id="ui-line-header"></span> <span class="text-slate" id="ui-line-status"></span></div>
+                            <div class="text-slate" id="ui-line-sub"></div>
+                            <button id="btnHeadingOver" class="btn-action btn-primary"></button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Cancel Option -->
-            <div id="cancelArea">
-                <button id="btnCancel"><span id="ui-cancel-text"></span><span id="cancelTimer">5</span><span id="ui-cancel-end"></span></button>
+                <div id="cancelArea">
+                    <button id="btnCancel"><span id="ui-cancel-text"></span><span id="cancelTimer">5</span><span id="ui-cancel-end"></span></button>
+                </div>
             </div>
 
         </div>
     </div>
 
-    <!-- Your Exact JavaScript Logic -->
     <script>
         const i18n = {
             en: {
@@ -278,4 +309,62 @@
         }
 
         function speakGroundingAnd119() {
-            const t
+            const t = i18n[sysLang];
+            if ('speechSynthesis' in window) {
+                const userMsg = new SpeechSynthesisUtterance(t.voiceUser);
+                userMsg.rate = 0.85; userMsg.lang = t.langCode;
+                window.speechSynthesis.speak(userMsg);
+
+                const twilioPayload = isHome ? t.voiceTwilioHome : t.voiceTwilioOutside;
+                
+                const twilioMsg = new SpeechSynthesisUtterance(twilioPayload);
+                twilioMsg.lang = t.langCode;
+                window.speechSynthesis.speak(twilioMsg);
+
+                document.getElementById('twilio-status').innerText = t.twilioSpeaking;
+                document.getElementById('twilio-log').innerText = twilioPayload;
+            }
+        }
+
+        function trackLocation() {
+            const coordsElem = document.getElementById("coords");
+            const t = i18n[sysLang];
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = Math.round(pos.coords.accuracy);
+                        if(isHome) {
+                            coordsElem.innerHTML = t.homeFormat;
+                        } else {
+                            coordsElem.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
+                        }
+                        document.getElementById("db-status").innerText = t.cloudUpdated;
+                    },
+                    (err) => { coordsElem.innerText = t.gpsFallback; },
+                    { enableHighAccuracy: true, maximumAge: 0 }
+                );
+            } else { coordsElem.innerText = t.gpsUnsupported; }
+        }
+
+        document.getElementById("toggleEnv").addEventListener("click", (e) => {
+            isHome = !isHome;
+            const t = i18n[sysLang];
+            e.target.innerText = isHome ? t.modeHome : t.modeOutside;
+            trackLocation(); 
+            speakGroundingAnd119();
+        });
+
+        document.getElementById("btnHeadingOver").addEventListener("click", (e) => {
+            if(headingOverClicked) return;
+            headingOverClicked = true;
+            e.target.innerText = i18n[sysLang].btnHeadingDone;
+            e.target.style.backgroundColor = "#059669"; 
+            e.target.style.borderColor = "#059669"; 
+            e.target.style.cursor = "default";
+        });
+        
+        (function tick(){const d=new Date();document.getElementById('clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');setTimeout(tick,30000);})();
+    </script>
+</body>
+</html>
