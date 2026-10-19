@@ -14,43 +14,29 @@
             text-align: center; touch-action: manipulation;
         }
 
-        #breathing-canvas {
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: radial-gradient(circle, #0284c7 0%, #000000 75%);
-            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none;
-        }
-        @keyframes breathe {
-            0%, 100% { transform: scale(0.8); opacity: 0.15; }
-            50% { transform: scale(1.4); opacity: 0.85; }
-        }
-
-        .container { z-index: 10; padding: 24px; width: 100%; max-width: 400px; }
+        .container { z-index: 10; padding: 24px; width: 100%; max-width: 400px; display: none; }
         h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
         p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
 
+        /* Start Button to bypass browser security */
+        #startScreen {
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+        }
+        #btnSimulateTrigger {
+            background-color: #dc2626; color: white; border: none; border-radius: 50px;
+            padding: 16px 32px; font-size: 1.2rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+        }
+
         /* Minimalist Bottom Cancel Button */
         #cancelArea {
-            position: absolute;
-            bottom: 40px;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            z-index: 20;
+            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20;
         }
         #btnCancel {
-            background: transparent;
-            color: #64748b;
-            font-size: 0.95rem;
-            border: none;
-            border-bottom: 1px solid #475569;
-            padding-bottom: 4px;
-            cursor: pointer;
-            transition: color 0.2s, border-color 0.2s;
+            background: transparent; color: #64748b; font-size: 0.95rem; border: none;
+            border-bottom: 1px solid #475569; padding-bottom: 4px; cursor: pointer;
         }
-        #btnCancel:active {
-            color: #94a3b8;
-            border-color: #94a3b8;
-        }
+        #btnCancel:active { color: #94a3b8; border-color: #94a3b8; }
 
         #coords {
             font-family: monospace; font-size: 0.95rem; color: #38bdf8;
@@ -60,8 +46,7 @@
         #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; }
 
         .dashboard {
-            display: none; /* Hidden until 5s passes */
-            flex-direction: column; gap: 10px; margin-top: 24px; text-align: left;
+            display: none; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left;
         }
         .card { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 16px; border-radius: 12px; font-size: 0.9rem; }
         .card-header { font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between;}
@@ -80,9 +65,14 @@
 </head>
 <body>
 
-    <div id="breathing-canvas"></div>
+    <!-- Landing Screen -->
+    <div id="startScreen">
+        <p style="color:#64748b; font-size:0.9rem;">Web Prototype Simulator</p>
+        <button id="btnSimulateTrigger">Simulate Hardware Button Press</button>
+    </div>
 
-    <div class="container">
+    <!-- Main Alert Container -->
+    <div class="container" id="mainAlert">
         <h1 id="status-title">Trigger Detected</h1>
         <p id="status-sub">Preparing to dispatch...</p>
         
@@ -90,7 +80,6 @@
         <div id="db-status" style="display:none;"></div>
         <button id="toggleEnv" style="display:none;">Current Mode: Outside (Live GPS)</button>
 
-        <!-- Dispatch Dashboard (Hidden initially) -->
         <div class="dashboard" id="dispatchDashboard">
             <div class="card">
                 <div class="card-header"><span class="text-red">119 Twilio Voice Proxy</span> <span id="twilio-status" class="text-slate">Calling...</span></div>
@@ -104,8 +93,8 @@
         </div>
     </div>
 
-    <!-- Minimalist Cancel Option at the Bottom -->
-    <div id="cancelArea">
+    <!-- Cancel Option -->
+    <div id="cancelArea" style="display:none;">
         <button id="btnCancel">誤觸取消 Cancel (<span id="cancelTimer">5</span>s)</button>
     </div>
 
@@ -120,9 +109,17 @@
         let hapticInterval;
         let isCancelled = false;
 
+        // START BUTTON Logic
+        document.getElementById("btnSimulateTrigger").addEventListener("click", () => {
+            document.getElementById("startScreen").style.display = "none";
+            document.getElementById("mainAlert").style.display = "block";
+            document.getElementById("cancelArea").style.display = "block";
+            initiateWarningPhase();
+        });
+
         function startWarningHaptics() {
             if ("vibrate" in navigator) {
-                // Short, rhythmic pulsing vibrations instead of one long one
+                // Short buzz pulses
                 navigator.vibrate([300, 300]); 
                 hapticInterval = setInterval(() => {
                     navigator.vibrate([300, 300]);
@@ -137,10 +134,8 @@
             clearInterval(hapticInterval);
         }
 
-        // --- STEP 1: The 5-Second Warning Phase ---
         function initiateWarningPhase() {
             startWarningHaptics();
-            
             const timerElem = document.getElementById("cancelTimer");
             
             cancelInterval = setInterval(() => {
@@ -149,32 +144,28 @@
                 
                 if (countdown <= 0) {
                     clearInterval(cancelInterval);
-                    if (!isCancelled) executeDispatch(); // Time's up! Fire the dispatch!
+                    if (!isCancelled) executeDispatch();
                 }
             }, 1000);
         }
 
-        // --- STEP 2: The User Cancels It ---
         document.getElementById("btnCancel").addEventListener("click", () => {
             isCancelled = true;
             clearInterval(cancelInterval);
             stopHaptics();
             
             document.getElementById("status-title").innerText = "Alert Cancelled";
-            document.getElementById("status-title").style.color = "#64748b"; // Muted Slate
+            document.getElementById("status-title").style.color = "#64748b"; 
             document.getElementById("status-sub").innerText = "No emergency calls were made.";
             document.getElementById("cancelArea").style.display = "none";
         });
 
-        // --- STEP 3: Time's Up, Execute Emergency Protocol ---
         function executeDispatch() {
-            // Stop ALL vibration once the dispatch actually starts
             stopHaptics();
 
-            // Update UI
             document.getElementById("cancelArea").style.display = "none";
             document.getElementById("status-title").innerText = "Dispatch Active";
-            document.getElementById("status-title").style.color = "#f87171"; // Red
+            document.getElementById("status-title").style.color = "#f87171"; 
             document.getElementById("status-sub").innerText = "Help is on the way. Follow the rhythm and breathe.";
             
             document.getElementById("coords").style.display = "block";
@@ -188,10 +179,6 @@
 
         function speakGroundingAnd119() {
             if ('speechSynthesis' in window) {
-                const userMsg = new SpeechSynthesisUtterance("Help is on the way. Follow the rhythm and breathe.");
-                userMsg.rate = 0.85; userMsg.pitch = 0.9;
-                window.speechSynthesis.speak(userMsg);
-
                 const twilioPayload = isHome 
                     ? "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。"
                     : "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。";
@@ -210,10 +197,8 @@
             const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
             const payload = {
                 status: "ACTIVE_ALERT",
-                lastUpdated: new Date().toISOString(),
                 coordinates: { latitude: lat, longitude: lng, accuracyMeters: accuracy, source: source },
-                tacticalContext: isHome ? { locationType: "INDOOR", floor: "4", gateAccessCode: "#5821" } : { locationType: "OUTDOOR" },
-                directionsUrl: navUrl
+                tacticalContext: isHome ? { locationType: "INDOOR", floor: "4", gateAccessCode: "#5821" } : { locationType: "OUTDOOR" }
             };
             try {
                 const response = await fetch(FIREBASE_ENDPOINT, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -232,13 +217,12 @@
                             coordsElem.innerHTML = `Home Detected<br><span style="color:#fcd34d">Floor 4 | Gate Code: #5821</span>`;
                             syncToDatabase(lat, lng, acc, "Pre-saved Home Profile");
                         } else {
-                            coords.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
+                            coordsElem.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
                             syncToDatabase(lat, lng, acc, "Live Outdoor GPS");
                         }
                     },
                     (err) => {
                         coordsElem.innerText = "GPS unavailable, using fallback.";
-                        syncToDatabase(FALLBACK_LAT, FALLBACK_LNG, 50, "Default Base Location");
                     },
                     { enableHighAccuracy: true, maximumAge: 0 }
                 );
@@ -254,10 +238,6 @@
         document.getElementById("btnHeadingOver").addEventListener("click", (e) => {
             e.target.innerText = "✅ 已通知群組 (Group Notified)";
             e.target.style.backgroundColor = "#059669"; e.target.style.borderColor = "#059669"; e.target.disabled = true;
-        });
-
-        window.addEventListener("DOMContentLoaded", () => {
-            initiateWarningPhase(); // Starts the 5-second countdown immediately on load
         });
     </script>
 </body>
