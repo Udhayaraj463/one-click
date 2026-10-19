@@ -1,370 +1,306 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>One-Click Lifeline Prototype</title>
-    <style>
-        :root {
-            --frame: #0F172A;
-            --bg: #000000;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            background: #f1f5f9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-Click Lifeline Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Exact CSS from reference file */
+:root{
+  --bg:#F3F4F6; --surface:#FFFFFF; --surface-2:#F8FAFC; --fg:#0F172A; --fg-2:#475569; --fg-3:#64748B;
+  --border:#E2E8F0; --danger:#DC2626; --danger-soft:#FEE2E2; --on-danger:#FFFFFF;
+  --safe:#2563EB; --safe-soft:#DBEAFE; --ok:#15803D; --ok-soft:#DCFCE7; --warn:#B45309; --warn-soft:#FEF3C7;
+  --frame:#0F172A; --ring:#2563EB;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0F14; --surface:#141A21; --surface-2:#1A222B; --fg:#F1F5F9; --fg-2:#CBD5E1; --fg-3:#94A3B8;
+    --border:#263241; --danger:#EF4444; --danger-soft:#3A1416; --on-danger:#FFFFFF;
+    --safe:#60A5FA; --safe-soft:#14243D; --ok:#4ADE80; --ok-soft:#10291A; --warn:#FBBF24; --warn-soft:#33270B;
+    --frame:#000000; --ring:#60A5FA;
+  }
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:'Noto Sans TC',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;touch-action:manipulation;color:inherit}
+button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-        /* Exact Phone Skin from your Reference */
-        .phone {
-            width: 400px;
-            height: 820px;
-            background: var(--frame);
-            border-radius: 52px;
-            padding: 12px;
-            box-shadow: 0 30px 60px -20px rgba(15,23,42,.35);
-            flex: none;
-            position: relative;
-        }
+.wrap{max-width:1120px;margin:0 auto;padding:40px 24px 64px;display:grid;grid-template-columns:1fr 400px;gap:56px;align-items:start}
+.intro h1{font-size:30px;font-weight:900;line-height:1.3;margin-bottom:6px}
+.intro .ver{display:inline-block;font-size:13px;font-weight:700;color:var(--fg-3);margin-bottom:12px}
+.intro .lead{color:var(--fg-2);font-size:16px;margin-bottom:28px;max-width:52ch}
 
-        .screen {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: var(--bg);
-            border-radius: 42px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            color: #ffffff;
-        }
+/* Phone Frame */
+.phone{position:sticky;top:24px;width:400px;height:820px;background:var(--frame);border-radius:52px;padding:12px;box-shadow:0 30px 60px -20px rgba(15,23,42,.35)}
+.screen{position:relative;width:100%;height:100%;background:var(--bg);border-radius:42px;overflow:hidden;display:flex;flex-direction:column}
+.status{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font-size:14px;font-weight:700;position:relative;z-index:2}
+.view{position:absolute;inset:44px 0 0 0;display:none;flex-direction:column;padding:12px 20px 28px;overflow-y:auto}
+.view.on{display:flex}
 
-        /* Phone Status Bar (Time/Battery) */
-        .status {
-            height: 44px;
-            flex: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 28px;
-            font-size: 14px;
-            font-weight: 700;
-            position: relative;
-            z-index: 20;
-        }
+/* Shared UI */
+.top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
+.app-name{font-weight:900;font-size:18px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px; margin-bottom: 12px;}
+.card-title{font-size:13px;font-weight:700;color:var(--fg-3);margin-bottom:8px;letter-spacing:.04em;display:flex;justify-content:space-between;gap:8px}
 
-        /* App Layout Box to prevent breaking the phone screen */
-        .app-body {
-            flex: 1;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
+/* Standby SOS Button */
+.hw{margin:40px auto 30px;width:220px;height:220px;border-radius:50%;border:none;background:var(--danger);color:var(--on-danger);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 0 0 14px var(--danger-soft);transition:transform .12s;flex:none}
+.hw:active{transform:scale(.96)}
+.hw b{font-size:38px;font-weight:900;letter-spacing:.1em}
+.hw span{font-size:14px;opacity:.9;padding:0 16px;text-align:center}
 
-        /* Your Breathing Background */
-        #breathing-canvas {
-            position: absolute; inset: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #0284c7 0%, #000000 75%);
-            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none; z-index: 1;
-        }
-        @keyframes breathe {
-            0%, 100% { transform: scale(0.8); opacity: 0.15; }
-            50% { transform: scale(1.4); opacity: 0.85; }
-        }
+/* Segments & Buttons */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:4px;gap:4px; margin-bottom: 20px;}
+.seg button{border:none;background:transparent;border-radius:9px;min-height:44px;font-size:15px;font-weight:700;color:var(--fg-2);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.btn{width:100%;min-height:52px;border-radius:14px;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg);flex:none}
+.btn.primary{background:var(--safe);border-color:var(--safe);color:#fff}
 
-        /* App UI Components */
-        .container { z-index: 10; width: 100%; text-align: center; display: none; }
-        h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
-        p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
+/* Countdown */
+.v-count{background:var(--danger);color:var(--on-danger);align-items:center;text-align:center;inset:0;padding:64px 24px 36px}
+.v-count h2{font-size:28px;font-weight:900;margin-bottom:6px}
+.v-count p{font-size:16px;opacity:.92}
+.ring{position:relative;width:200px;height:200px;margin:40px 0;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:12}
+.ring .bg{stroke:rgba(255,255,255,.25)}
+.ring .fg{stroke:#fff;stroke-linecap:round;stroke-dasharray:628;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+.ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:92px;font-weight:900;font-variant-numeric:tabular-nums}
+.cancel-big{margin-top:auto;width:100%;min-height:64px;border-radius:16px;border:none;background:#fff;color:#B91C1C!important;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;flex:none}
+.cancel-big:active{transform:scale(.98)}
 
-        #langScreen {
-            z-index: 50; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 0 20px;
-        }
-        .lang-btn {
-            background-color: transparent; color: #cbd5e1; border: 1px solid #475569;
-            border-radius: 12px; padding: 16px 0; font-size: 1.2rem; cursor: pointer;
-            transition: background-color 0.2s, color 0.2s; width: 100%; font-weight: bold;
-        }
-        .lang-btn:active { background-color: #334155; color: white; }
+/* Dispatch Hero */
+.hero-state{border-radius:18px;padding:16px 18px;background:var(--danger-soft);margin-bottom:20px;transition:background .3s}
+.hero-state .k{font-size:13px;font-weight:700;color:var(--danger);display:flex;align-items:center;gap:6px}
+.hero-state h2{font-size:23px;font-weight:900;margin:4px 0 2px; color:var(--danger);}
+.hero-state p{font-size:14px;color:var(--fg-2)}
 
-        #cancelArea { 
-            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none; 
-        }
-        #btnCancel { background: transparent; color: #64748b; font-size: 0.95rem; border: none; border-bottom: 1px solid #475569; padding-bottom: 4px; cursor: pointer; }
-        #btnCancel:active { color: #94a3b8; border-color: #94a3b8; }
+/* Cancelled State */
+.v-cancel{align-items:center;justify-content:center;text-align:center;gap:10px}
+.v-cancel h2{font-size:26px;font-weight:900}
+.v-cancel p{color:var(--fg-2)}
+.ico.ok{background:var(--ok-soft);color:var(--ok); display:flex; align-items:center; justify-content:center;}
 
-        #coords {
-            font-family: monospace; font-size: 0.95rem; color: #38bdf8;
-            margin-top: 10px; background: rgba(15, 23, 42, 0.6); padding: 10px;
-            border-radius: 8px; border: 1px solid #1e293b; text-align: center;
-        }
-        #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; text-align: center; }
-
-        .dashboard { display: none; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left; }
-        .card { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 16px; border-radius: 12px; font-size: 0.9rem; }
-        .card-header { font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between;}
-        .text-red { color: #f87171; } .text-green { color: #34d399; } .text-slate { color: #cbd5e1; font-size: 0.8rem; }
-        
-        .btn-action { width: 100%; padding: 12px; margin-top: 10px; background-color: #1e293b; color: white; border: 1px solid #475569; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-primary { background-color: #4f46e5; border-color: #4f46e5; }
-        
-        #toggleEnv { margin-top: 20px; background: transparent; color: #818cf8; border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; display: block; margin: 20px auto 0; }
-
-        /* Scaling for small monitors */
-        @media (max-width: 440px) {
-            body { padding: 0; background: #000; }
-            .phone { width: 100vw; height: 100vh; border-radius: 0; padding: 0; border: none; box-shadow: none; }
-            .screen { border-radius: 0; }
-        }
-        @media (max-height: 850px) and (min-width: 441px) {
-            .phone { transform: scale(0.85); }
-        }
-    </style>
+@media (max-width: 900px){
+  .wrap{grid-template-columns:1fr;gap:28px;padding:24px 16px 48px}
+  .phone{position:relative;top:0;width:100%;max-width:400px;margin:0 auto;order:-1}
+}
+</style>
 </head>
 <body>
+<div class="wrap">
 
-    <div class="phone" aria-label="手機畫面示意">
-        <div class="screen">
-            
-            <!-- Status Bar from Reference -->
-            <div class="status"><span id="clock">9:41</span><span aria-hidden="true">● ● ●</span></div>
+  <!-- Desktop Presentation Intro -->
+  <section class="intro">
+    <h1>One-Click Lifeline</h1>
+    <span class="ver">Zero-Touch Rescue System</span>
+    <p class="lead">Select your language, simulate the hardware trigger, and watch the simultaneous Twilio 119 and LINE Family dispatch logic unfold in real-time.</p>
+  </section>
 
-            <div class="app-body">
-                <div id="breathing-canvas"></div>
+  <!-- The Phone UI -->
+  <div class="phone" aria-label="手機畫面示意">
+    <div class="screen">
+      <div class="status"><span id="clock">9:41</span><span aria-hidden="true">● ● ●</span></div>
 
-                <div id="langScreen">
-                    <button class="lang-btn" onclick="selectLanguage('en')">English</button>
-                    <button class="lang-btn" onclick="selectLanguage('zh')">繁體中文</button>
-                </div>
-                
-                <div class="container" id="mainAlert">
-                    <h1 id="status-title"></h1>
-                    <p id="status-sub"></p>
-                    
-                    <div id="coords" style="display:none;"></div>
-                    <div id="db-status" style="display:none;"></div>
-                    <button id="toggleEnv" style="display:none;"></button>
+      <!-- 1. Language Selection View -->
+      <div class="view on" id="v-lang" style="justify-content: center; gap: 16px;">
+        <h2 style="text-align:center; margin-bottom: 20px; font-weight: 900; font-size: 22px;">Choose Language</h2>
+        <button class="btn" style="min-height: 70px; font-size: 18px;" onclick="selectLanguage('en')">English</button>
+        <button class="btn" style="min-height: 70px; font-size: 18px;" onclick="selectLanguage('zh')">繁體中文</button>
+      </div>
 
-                    <div class="dashboard" id="dispatchDashboard">
-                        <div class="card">
-                            <div class="card-header"><span class="text-red" id="ui-twilio-header"></span> <span id="twilio-status" class="text-slate"></span></div>
-                            <div id="twilio-log" class="text-slate" style="font-family: monospace;"></div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header"><span class="text-green" id="ui-line-header"></span> <span class="text-slate" id="ui-line-status"></span></div>
-                            <div class="text-slate" id="ui-line-sub"></div>
-                            <button id="btnHeadingOver" class="btn-action btn-primary"></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="cancelArea">
-                    <button id="btnCancel"><span id="ui-cancel-text"></span><span id="cancelTimer">5</span><span id="ui-cancel-end"></span></button>
-                </div>
-            </div>
-
+      <!-- 2. Standby View -->
+      <div class="view" id="v-standby">
+        <div class="top-row">
+          <span class="app-name">Lifeline</span>
+          <span class="pill"><span class="dot"></span><span id="ui-ready">Ready</span></span>
         </div>
-    </div>
-
-    <script>
-        const i18n = {
-            en: {
-                titleTrigger: "Trigger Detected", subTrigger: "Preparing to dispatch...",
-                cancelBtn: "Cancel (", cancelEnd: "s)",
-                titleCancel: "Alert Cancelled", subCancel: "No emergency calls were made.",
-                titleActive: "Dispatch Active", subActive: "Help is on the way. Follow the rhythm and breathe.",
-                twilioHeader: "119 Twilio Voice Proxy", twilioCalling: "Calling...",
-                twilioSpeaking: "Speaking to Operator", twilioDispatching: "Dispatching...",
-                lineHeader: "LINE Family Group", lineSent: "Alert Sent",
-                lineSub: "119 is notified. Coordinate below:",
-                btnHeading: "I am heading over", btnHeadingDone: "✅ Group Notified",
-                gpsAcquiring: "Acquiring live location...", gpsFallback: "GPS unavailable, using fallback.", gpsUnsupported: "Geolocation not supported.",
-                cloudUpdated: "Cloud Sync: Updated",
-                modeOutside: "Current Mode: Outside (Live GPS)", modeHome: "Current Mode: Home (Gate Code)",
-                homeFormat: "Home Detected<br><span style='color:#fcd34d'>Floor 4 | Gate Code: #5821</span>",
-                voiceUser: "Help is on the way. Follow the rhythm and breathe.",
-                voiceTwilioHome: "Emergency 119. Patient is hearing and speech impaired. Location: 4th Floor, Number 18, Section 3, Heping East Road, Xinyi District, Taipei City. Ground floor gate code is hash 5 8 2 1.",
-                voiceTwilioOutside: "Emergency 119. Patient is hearing and speech impaired. Currently outdoors. Please dispatch ambulance based on live GPS coordinates.",
-                langCode: "en-US"
-            },
-            zh: {
-                titleTrigger: "已偵測到觸發", subTrigger: "準備通報...",
-                cancelBtn: "誤觸取消 (", cancelEnd: "秒)",
-                titleCancel: "警報已取消", subCancel: "未撥打任何緊急電話。",
-                titleActive: "救援通報中", subActive: "救援已在路上。請跟隨節奏深呼吸。",
-                twilioHeader: "119 Twilio 語音代答", twilioCalling: "撥號中...",
-                twilioSpeaking: "正在與接線員對話", twilioDispatching: "發送中...",
-                lineHeader: "LINE 親友群組", lineSent: "警報已發送",
-                lineSub: "已同步通知 119。請在下方協調：",
-                btnHeading: "我正在前往", btnHeadingDone: "✅ 已通知群組",
-                gpsAcquiring: "正在獲取即時定位...", gpsFallback: "無法使用 GPS，使用備用定位。", gpsUnsupported: "不支援地理定位。",
-                cloudUpdated: "雲端同步：已更新",
-                modeOutside: "當前模式：戶外 (即時 GPS)", modeHome: "當前模式：居家 (大門密碼)",
-                homeFormat: "偵測到居家環境<br><span style='color:#fcd34d'>4 樓 | 大門密碼：#5821</span>",
-                voiceUser: "救援已在路上。請跟隨節奏深呼吸。",
-                voiceTwilioHome: "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。",
-                voiceTwilioOutside: "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。",
-                langCode: "zh-TW"
-            }
-        };
-
-        let sysLang = 'en'; 
-        let isHome = false; 
-        let countdown = 5;
-        let cancelInterval;
-        let hapticInterval;
-        let isCancelled = false;
-        let headingOverClicked = false;
-
-        function selectLanguage(lang) {
-            sysLang = lang;
-            const t = i18n[sysLang];
-
-            document.getElementById("status-title").innerText = t.titleTrigger;
-            document.getElementById("status-sub").innerText = t.subTrigger;
-            document.getElementById("ui-cancel-text").innerText = t.cancelBtn;
-            document.getElementById("ui-cancel-end").innerText = t.cancelEnd;
-            document.getElementById("ui-twilio-header").innerText = t.twilioHeader;
-            document.getElementById("twilio-status").innerText = t.twilioCalling;
-            document.getElementById("twilio-log").innerText = t.twilioDispatching;
-            document.getElementById("ui-line-header").innerText = t.lineHeader;
-            document.getElementById("ui-line-status").innerText = t.lineSent;
-            document.getElementById("ui-line-sub").innerText = t.lineSub;
-            document.getElementById("btnHeadingOver").innerText = t.btnHeading;
-            document.getElementById("coords").innerText = t.gpsAcquiring;
-            document.getElementById("toggleEnv").innerText = t.modeOutside;
-
-            document.getElementById("langScreen").style.display = "none";
-            document.getElementById("mainAlert").style.display = "block";
-            document.getElementById("cancelArea").style.display = "block";
-
-            initiateWarningPhase();
-        }
-
-        function startWarningHaptics() {
-            if ("vibrate" in navigator) {
-                navigator.vibrate([300, 300]); 
-                hapticInterval = setInterval(() => { navigator.vibrate([300, 300]); }, 600);
-            }
-        }
-
-        function stopHaptics() {
-            if ("vibrate" in navigator) navigator.vibrate(0);
-            clearInterval(hapticInterval);
-        }
-
-        function initiateWarningPhase() {
-            startWarningHaptics();
-            const timerElem = document.getElementById("cancelTimer");
-            
-            cancelInterval = setInterval(() => {
-                countdown--;
-                timerElem.innerText = countdown;
-                
-                if (countdown <= 0) {
-                    clearInterval(cancelInterval);
-                    if (!isCancelled) executeDispatch();
-                }
-            }, 1000);
-        }
-
-        document.getElementById("btnCancel").addEventListener("click", () => {
-            isCancelled = true;
-            clearInterval(cancelInterval);
-            stopHaptics();
-            
-            const t = i18n[sysLang];
-            document.getElementById("status-title").innerText = t.titleCancel;
-            document.getElementById("status-title").style.color = "#64748b"; 
-            document.getElementById("status-sub").innerText = t.subCancel;
-            document.getElementById("cancelArea").style.display = "none";
-        });
-
-        function executeDispatch() {
-            stopHaptics();
-            const t = i18n[sysLang];
-
-            document.getElementById("cancelArea").style.display = "none";
-            document.getElementById("status-title").innerText = t.titleActive;
-            document.getElementById("status-title").style.color = "#f87171"; 
-            document.getElementById("status-sub").innerText = t.subActive;
-            
-            document.getElementById("coords").style.display = "block";
-            document.getElementById("db-status").style.display = "block";
-            document.getElementById("toggleEnv").style.display = "inline-block";
-            document.getElementById("dispatchDashboard").style.display = "flex";
-
-            speakGroundingAnd119();
-            trackLocation();
-        }
-
-        function speakGroundingAnd119() {
-            const t = i18n[sysLang];
-            if ('speechSynthesis' in window) {
-                const userMsg = new SpeechSynthesisUtterance(t.voiceUser);
-                userMsg.rate = 0.85; userMsg.lang = t.langCode;
-                window.speechSynthesis.speak(userMsg);
-
-                const twilioPayload = isHome ? t.voiceTwilioHome : t.voiceTwilioOutside;
-                
-                const twilioMsg = new SpeechSynthesisUtterance(twilioPayload);
-                twilioMsg.lang = t.langCode;
-                window.speechSynthesis.speak(twilioMsg);
-
-                document.getElementById('twilio-status').innerText = t.twilioSpeaking;
-                document.getElementById('twilio-log').innerText = twilioPayload;
-            }
-        }
-
-        function trackLocation() {
-            const coordsElem = document.getElementById("coords");
-            const t = i18n[sysLang];
-            
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (pos) => {
-                        const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = Math.round(pos.coords.accuracy);
-                        if(isHome) {
-                            coordsElem.innerHTML = t.homeFormat;
-                        } else {
-                            coordsElem.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
-                        }
-                        document.getElementById("db-status").innerText = t.cloudUpdated;
-                    },
-                    (err) => { coordsElem.innerText = t.gpsFallback; },
-                    { enableHighAccuracy: true, maximumAge: 0 }
-                );
-            } else { coordsElem.innerText = t.gpsUnsupported; }
-        }
-
-        document.getElementById("toggleEnv").addEventListener("click", (e) => {
-            isHome = !isHome;
-            const t = i18n[sysLang];
-            e.target.innerText = isHome ? t.modeHome : t.modeOutside;
-            trackLocation(); 
-            speakGroundingAnd119();
-        });
-
-        document.getElementById("btnHeadingOver").addEventListener("click", (e) => {
-            if(headingOverClicked) return;
-            headingOverClicked = true;
-            e.target.innerText = i18n[sysLang].btnHeadingDone;
-            e.target.style.backgroundColor = "#059669"; 
-            e.target.style.borderColor = "#059669"; 
-            e.target.style.cursor = "default";
-        });
         
-        (function tick(){const d=new Date();document.getElementById('clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');setTimeout(tick,30000);})();
-    </script>
+        <button class="hw" id="trigger">
+            <b>SOS</b>
+            <span id="ui-sos-hint">Press to trigger alert</span>
+        </button>
+        
+        <div class="card-title" id="ui-loc-title">Location Mode</div>
+        <div class="seg" role="group">
+          <button id="btnOut" aria-pressed="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span id="ui-loc-out">Outside (GPS)</span></button>
+          <button id="btnHome" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg><span id="ui-loc-home">At Home</span></button>
+        </div>
+
+        <p style="text-align:center; font-size:14px; color:var(--fg-3);" id="ui-sub-hint">Will instantly notify 119 and LINE family group.</p>
+      </div>
+
+      <!-- 3. Countdown View -->
+      <div class="view v-count" id="v-count">
+        <h2 id="ui-count-title">Calling 119 Soon</h2>
+        <p id="ui-count-sub">Pressed by mistake? Cancel below</p>
+        
+        <div class="ring" aria-hidden="true">
+          <svg viewBox="0 0 220 220"><circle class="bg" cx="110" cy="110" r="100"/><circle class="fg" id="ringFg" cx="110" cy="110" r="100"/></svg>
+          <div class="num" id="countNum">5</div>
+        </div>
+        
+        <button class="cancel-big" id="btnCancel">
+            <svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <span id="ui-cancel-btn">Cancel</span>
+        </button>
+      </div>
+
+      <!-- 4. Dispatch Dashboard -->
+      <div class="view" id="v-dispatch">
+        <div class="hero-state" id="hero">
+          <div class="k"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span id="ui-dispatch-active">Dispatch Active</span></div>
+          <h2 id="ui-dispatch-title">Help is on the way</h2>
+          <p id="ui-dispatch-sub">Follow the rhythm and breathe.</p>
+        </div>
+        
+        <!-- Live Location Output -->
+        <div class="card" style="background:var(--surface-2);">
+            <div class="card-title" id="ui-live-loc">Live Payload Data</div>
+            <div id="coords" style="font-family:monospace; font-size:14px; color:var(--safe); line-height: 1.5;"></div>
+            <div id="db-status" style="font-size:12px; color:var(--ok); margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span id="ui-twilio-header">119 Twilio Voice Proxy</span> 
+                <span id="twilio-status" style="color:var(--danger);">Calling...</span>
+            </div>
+            <div id="twilio-log" style="font-family: monospace; font-size:13px; color:var(--fg-2);">Dispatching...</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span id="ui-line-header" style="color:var(--ok);">LINE Family Group</span> 
+                <span id="ui-line-status" style="color:var(--ok);">Alert Sent</span>
+            </div>
+            <div style="font-size:13px; color:var(--fg-2); margin-bottom: 12px;" id="ui-line-sub">119 is notified. Coordinate below:</div>
+            <button id="btnHeadingOver" class="btn primary"></button>
+        </div>
+      </div>
+
+      <!-- 5. Cancelled View -->
+      <div class="view v-cancel" id="v-cancel">
+        <span class="ico ok" style="width:72px;height:72px;border-radius:24px"><svg class="i" viewBox="0 0 24 24" style="width:36px;height:36px"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <h2 id="ui-c-title">Cancelled</h2>
+        <p id="ui-c-sub" style="margin-bottom: 20px;">No calls were made.</p>
+        <button class="btn" id="btnRestart" style="max-width:240px" id="ui-c-back">Back to Start</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+    const $ = s => document.querySelector(s);
+    const $$ = s => [...document.querySelectorAll(s)];      const i18n = { en: { ready: "Ready", sosHint: "Press to trigger alert", locTitle: "Location Mode", locOut: "Outside (GPS)", locHome: "At Home", subHint: "Will instantly notify 119 and LINE family group.", countTitle: "Calling 119 Soon", countSub: "Pressed by mistake? Cancel below", cancelBtn: "Cancel", dActive: "Dispatch Active", dTitle: "Help is on the way", dSub: "Follow the rhythm and breathe.", liveLoc: "Live Payload Data", twilioHead: "119 Twilio Voice Proxy", twilioCall: "Speaking to Operator", lineHead: "LINE Family Group", lineSent: "Alert Sent", lineSub: "119 is notified. Coordinate below:", btnHead: "I am heading over", btnHeadDone: "✅ Group Notified", cTitle: "Cancelled", cSub: "No emergency calls were made.", cBack: "Back to Start",  voiceUser: "Help is on the way. Follow the rhythm and breathe.", voiceTwilioHome: "Emergency 119. Patient is hearing and speech impaired. Location: 4th Floor, Number 18, Section 3, Heping East Road, Xinyi District, Taipei City. Ground floor gate code is hash 5 8 2 1.", voiceTwilioOutside: "Emergency 119. Patient is hearing and speech impaired. Currently outdoors. Please dispatch ambulance based on live GPS coordinates.", homeFormat: "Home Detected<br><span style='color:var(--warn)'>Floor 4 \vert{} Gate Code: #5821</span>", gpsAcquiring: "Acquiring live location...", gpsFallback: "GPS unavailable, using fallback.", cloudUpdated: "Cloud Sync: Updated", langCode: "en-US" }, zh: { ready: "已就緒", sosHint: "模擬按下硬體按鈕", locTitle: "當前模式", locOut: "戶外 (GPS)", locHome: "居家 (大門密碼)", subHint: "將同步通報 119 與 LINE 家人群組。", countTitle: "即將通報 119", countSub: "如果是誤觸，請按下方取消", cancelBtn: "誤觸取消", dActive: "救援通報中", dTitle: "救援已在路上", dSub: "請跟隨節奏深呼吸。", liveLoc: "通報定位數據", twilioHead: "119 Twilio 語音代答", twilioCall: "正在與接線員對話", lineHead: "LINE 親友群組", lineSent: "警報已發送", lineSub: "已同步通知 119。請在下方協調：", btnHead: "我正在前往", btnHeadDone: "✅ 已通知群組", cTitle: "已取消", cSub: "未撥打任何緊急電話。", cBack: "回到待機",  voiceUser: "救援已在路上。請跟隨節奏深呼吸。", voiceTwilioHome: "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。", voiceTwilioOutside: "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。", homeFormat: "偵測到居家環境<br><span style='color:var(--warn)'>4 樓 \vert{} 大門密碼：#5821</span>", gpsAcquiring: "正在獲取即時定位...", gpsFallback: "無法使用 GPS，使用備用定位。", cloudUpdated: "雲端同步：已更新", langCode: "zh-TW" } };      let sysLang = 'en'; let isHome = false; let countdown = 5; let cdTimer; let hapticInterval; let headingOverClicked = false;      function show(name) { $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + name));
+    }
+
+    function selectLanguage(lang) {
+        sysLang = lang;
+        const t = i18n[sysLang];
+
+        $('#ui-ready').innerText = t.ready; $('#ui-sos-hint').innerText = t.sosHint; $('#ui-loc-title').innerText = t.locTitle;
+        $('#ui-loc-out').innerText = t.locOut; $('#ui-loc-home').innerText = t.locHome; $('#ui-sub-hint').innerText = t.subHint;
+        $('#ui-count-title').innerText = t.countTitle; $('#ui-count-sub').innerText = t.countSub; $('#ui-cancel-btn').innerText = t.cancelBtn;
+        $('#ui-dispatch-active').innerText = t.dActive; $('#ui-dispatch-title').innerText = t.dTitle; $('#ui-dispatch-sub').innerText = t.dSub;
+        $('#ui-live-loc').innerText = t.liveLoc; $('#ui-twilio-header').innerText = t.twilioHead; $('#twilio-status').innerText = t.twilioCall;
+        $('#ui-line-header').innerText = t.lineHead; $('#ui-line-status').innerText = t.lineSent; $('#ui-line-sub').innerText = t.lineSub;
+        $('#btnHeadingOver').innerText = t.btnHead; $('#ui-c-title').innerText = t.cTitle; $('#ui-c-sub').innerText = t.cSub; $('#btnRestart').innerText = t.cBack;
+
+        show('standby');
+    }
+
+    $$('.seg button').forEach(b => b.addEventListener('click', () => { isHome = b.id === 'btnHome'; $$
+('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    }));
+
+    function stopHaptics() {
+        if ("vibrate" in navigator) navigator.vibrate(0);
+        clearInterval(hapticInterval);
+    }
+
+    $('#trigger').addEventListener('click', () => {
+        show('count');
+        countdown = 5;
+        const C = 628;
+        $('#countNum').innerText = countdown;
+        $('#ringFg').style.strokeDashoffset = 0;
+        
+        if ("vibrate" in navigator) {
+            navigator.vibrate([300, 200, 300]); 
+            hapticInterval = setInterval(() => { navigator.vibrate([300, 200]); }, 1000);
+        }
+
+        cdTimer = setInterval(() => {
+            countdown--; 
+            $('#countNum').innerText = Math.max(countdown, 0);
+            $('#ringFg').style.strokeDashoffset = C * (5 - countdown) / 5;
+            
+            if (countdown <= 0) {
+                clearInterval(cdTimer);
+                executeDispatch();
+            }
+        }, 1000);
+    });
+
+    $('#btnCancel').addEventListener('click', () => {
+        clearInterval(cdTimer);
+        stopHaptics();
+        show('cancel');
+    });
+
+    $('#btnRestart').addEventListener('click', () => { show('standby'); });
+
+    function executeDispatch() {
+        stopHaptics();
+        show('dispatch');
+        speakGroundingAnd119();
+        trackLocation();
+    }
+
+    function speakGroundingAnd119() {
+        const t = i18n[sysLang];
+        if ('speechSynthesis' in window) {
+            const twilioPayload = isHome ? t.voiceTwilioHome : t.voiceTwilioOutside;
+            const msg = new SpeechSynthesisUtterance(twilioPayload);
+            msg.lang = t.langCode;
+            window.speechSynthesis.speak(msg);
+            $('#twilio-log').innerText = twilioPayload;
+        }
+    }
+
+    function trackLocation() {
+        const t = i18n[sysLang];
+        const coordsElem = $('#coords');
+        
+        if ("geolocation" in navigator) {
+            coordsElem.innerText = t.gpsAcquiring;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if(isHome) { coordsElem.innerHTML = t.homeFormat; } 
+                    else { coordsElem.innerText = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`; }
+                    $('#db-status').innerText = t.cloudUpdated;
+                },
+                (err) => { coordsElem.innerText = t.gpsFallback; },
+                { enableHighAccuracy: true }
+            );
+        } else { coordsElem.innerText = "Geolocation not supported."; }
+    }
+
+    $('#btnHeadingOver').addEventListener('click', (e) => {
+        if(headingOverClicked) return;
+        headingOverClicked = true;
+        e.target.innerText = i18n[sysLang].btnHeadDone;
+        e.target.style.backgroundColor = "var(--ok)"; e.target.style.borderColor = "var(--ok)";
+    });
+
+    (function tick(){ const d = new Date(); $('#clock').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); setTimeout(tick, 30000); })();
+</script>
 </body>
 </html>
