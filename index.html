@@ -262,17 +262,6 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke
         show('dispatch');
         speakGroundingAnd119();
         trackLocation();
-
-        // NEW: Tell the Python backend to send the LINE message
-        fetch('/trigger-alert', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === "success") {
-                    console.log("LINE message successfully delivered to group!");
-                    document.getElementById('ui-line-status').innerText = "Alert Sent ✅";
-                }
-            })
-            .catch(error => console.error('Error triggering alert:', error));
     }
 
     function speakGroundingAnd119() {
