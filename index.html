@@ -5,182 +5,276 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>One-Click Lifeline</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: #000; color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; overflow: hidden;
+            text-align: center; touch-action: manipulation;
         }
 
-        body {
-            background-color: #000;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            text-align: center;
-            touch-action: manipulation;
+        @keyframes flashStrobe { 0%, 100% { opacity: 0; } 50% { opacity: 0.95; } }
+        .strobe-active { animation: flashStrobe 0.25s infinite; }
+        #strobeOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: white; pointer-events: none; z-index: 9999; display: none;
         }
 
         #breathing-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, #0284c7 0%, #000000 75%);
-            opacity: 0.15;
-            animation: breathe 8s infinite ease-in-out;
-            pointer-events: none;
+            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none;
         }
-
         @keyframes breathe {
-            0%, 100% {
-                transform: scale(0.8);
-                opacity: 0.15;
-            }
-            50% {
-                transform: scale(1.4);
-                opacity: 0.85;
-            }
+            0%, 100% { transform: scale(0.8); opacity: 0.15; }
+            50% { transform: scale(1.4); opacity: 0.85; }
         }
 
-        .container {
-            z-index: 10;
-            padding: 24px;
-        }
+        .container { z-index: 10; padding: 24px; width: 100%; max-width: 400px; }
+        h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
+        p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
 
-        h1 {
-            font-size: 1.9rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
+        /* Modified: Minimalist Bottom Cancel Button */
+        #cancelArea {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
         }
-
-        p {
-            font-size: 1.05rem;
+        #btnCancel {
+            background: transparent;
+            color: #64748b;
+            font-size: 0.95rem;
+            border: none;
+            border-bottom: 1px solid #475569;
+            padding-bottom: 4px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        #btnCancel:active {
             color: #94a3b8;
-            margin-bottom: 8px;
+            border-color: #94a3b8;
         }
 
         #coords {
-            font-family: monospace;
-            font-size: 0.95rem;
-            color: #38bdf8;
-            margin-top: 10px;
+            font-family: monospace; font-size: 0.95rem; color: #38bdf8;
+            margin-top: 10px; background: rgba(15, 23, 42, 0.6); padding: 10px;
+            border-radius: 8px; border: 1px solid #1e293b;
         }
+        #db-status { font-size: 0.85rem; color: #10b981; margin-top: 6px; }
 
-        #db-status {
-            font-size: 0.85rem;
-            color: #10b981;
-            margin-top: 6px;
+        .dashboard {
+            display: none; /* Hidden until 5s passes */
+            flex-direction: column; gap: 10px; margin-top: 24px; text-align: left;
+        }
+        .card { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 16px; border-radius: 12px; font-size: 0.9rem; }
+        .card-header { font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between;}
+        .text-red { color: #f87171; } .text-green { color: #34d399; } .text-slate { color: #cbd5e1; font-size: 0.8rem; }
+        
+        .btn-action {
+            width: 100%; padding: 10px; margin-top: 10px; background-color: #1e293b;
+            color: white; border: 1px solid #475569; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+        .btn-primary { background-color: #4f46e5; border-color: #4f46e5; }
+        #toggleEnv {
+            margin-top: 20px; background: transparent; color: #818cf8;
+            border: 1px solid #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
         }
     </style>
 </head>
 <body>
 
+    <div id="strobeOverlay"></div>
     <div id="breathing-canvas"></div>
 
     <div class="container">
-        <h1 id="status-title">Alert Activated</h1>
-        <p id="status-sub">Help is on the way. Follow the rhythm and breathe.</p>
-        <div id="coords">Acquiring live location...</div>
-        <div id="db-status"></div>
+        <h1 id="status-title">Trigger Detected</h1>
+        <p id="status-sub">Preparing to dispatch...</p>
+        
+        <div id="coords" style="display:none;">Acquiring live location...</div>
+        <div id="db-status" style="display:none;"></div>
+        <button id="toggleEnv" style="display:none;">Current Mode: Outside (Live GPS)</button>
+
+        <!-- Dispatch Dashboard (Hidden initially) -->
+        <div class="dashboard" id="dispatchDashboard">
+            <div class="card">
+                <div class="card-header"><span class="text-red">119 Twilio Voice Proxy</span> <span id="twilio-status" class="text-slate">Calling...</span></div>
+                <div id="twilio-log" class="text-slate" style="font-family: monospace;">Dispatching...</div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="text-green">LINE Family Group</span> <span class="text-slate">Alert Sent</span></div>
+                <div class="text-slate">119 is notified. Coordinate below:</div>
+                <button id="btnHeadingOver" class="btn-action btn-primary">我正在前往 (I am heading over)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimalist Cancel Option at the Bottom -->
+    <div id="cancelArea">
+        <button id="btnCancel">誤觸取消 Cancel (<span id="cancelTimer">5</span>s)</button>
     </div>
 
     <script>
-        // REPLACE WITH YOUR FIREBASE REALTIME DATABASE URL (keep the trailing /latest_location.json)
         const FIREBASE_ENDPOINT = "https://YOUR_FIREBASE_DATABASE_URL/latest_location.json";
         const FALLBACK_LAT = 25.042309;
         const FALLBACK_LNG = 121.5684554;
+        
+        let isHome = false; 
+        let countdown = 5;
+        let cancelInterval;
+        let isCancelled = false;
 
-        function speakGrounding() {
-            if ('speechSynthesis' in window) {
-                const message = new SpeechSynthesisUtterance("Help is on the way. Follow the rhythm and breathe.");
-                message.rate = 0.85;
-                message.pitch = 0.9;
-                window.speechSynthesis.speak(message);
+        function startWarningHaptics() {
+            if ("vibrate" in navigator) {
+                // One long, continuous 2.5-second vibration to indicate trigger is armed
+                navigator.vibrate(2500); 
             }
         }
 
-        function startHaptics() {
+        function stopHaptics() {
+            if ("vibrate" in navigator) navigator.vibrate(0);
+        }
+
+        function triggerStrobe() {
+            const strobe = document.getElementById("strobeOverlay");
+            strobe.style.display = "block";
+            strobe.classList.add("strobe-active");
+            // Automatically stop strobe after 5 seconds
+            setTimeout(() => { strobe.classList.remove("strobe-active"); strobe.style.display = "none"; }, 5000);
+        }
+
+        // --- STEP 1: The 5-Second Warning Phase ---
+        function initiateWarningPhase() {
+            triggerStrobe();
+            startWarningHaptics();
+            
+            const timerElem = document.getElementById("cancelTimer");
+            
+            cancelInterval = setInterval(() => {
+                countdown--;
+                timerElem.innerText = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(cancelInterval);
+                    if (!isCancelled) executeDispatch(); // Time's up! Fire the dispatch!
+                }
+            }, 1000);
+        }
+
+        // --- STEP 2: The User Cancels It ---
+        document.getElementById("btnCancel").addEventListener("click", () => {
+            isCancelled = true;
+            clearInterval(cancelInterval);
+            stopHaptics();
+            
+            document.getElementById("strobeOverlay").style.display = "none";
+            document.getElementById("strobeOverlay").classList.remove("strobe-active");
+            
+            document.getElementById("status-title").innerText = "Alert Cancelled";
+            document.getElementById("status-title").style.color = "#64748b"; // Muted Slate
+            document.getElementById("status-sub").innerText = "No emergency calls were made.";
+            document.getElementById("cancelArea").style.display = "none";
+        });
+
+        // --- STEP 3: Time's Up, Execute Emergency Protocol ---
+        function executeDispatch() {
+            stopHaptics();
+            // Start calming breathing haptics for the active emergency
             if ("vibrate" in navigator) {
                 navigator.vibrate([4000, 1000, 4000, 1000]);
-                setInterval(() => {
-                    navigator.vibrate([4000, 1000, 4000, 1000]);
-                }, 10000);
+                setInterval(() => navigator.vibrate([4000, 1000, 4000, 1000]), 10000);
+            }
+
+            // Update UI
+            document.getElementById("cancelArea").style.display = "none";
+            document.getElementById("status-title").innerText = "Dispatch Active";
+            document.getElementById("status-title").style.color = "#f87171"; // Red
+            document.getElementById("status-sub").innerText = "Help is on the way. Follow the rhythm and breathe.";
+            
+            document.getElementById("coords").style.display = "block";
+            document.getElementById("db-status").style.display = "block";
+            document.getElementById("toggleEnv").style.display = "inline-block";
+            document.getElementById("dispatchDashboard").style.display = "flex";
+
+            speakGroundingAnd119();
+            trackLocation();
+        }
+
+        function speakGroundingAnd119() {
+            if ('speechSynthesis' in window) {
+                const userMsg = new SpeechSynthesisUtterance("Help is on the way. Follow the rhythm and breathe.");
+                userMsg.rate = 0.85; userMsg.pitch = 0.9;
+                window.speechSynthesis.speak(userMsg);
+
+                const twilioPayload = isHome 
+                    ? "119緊急報案。患者為聽語障人士。位置：台北市信義區和平東路三段 18 號 4 樓之 2。一樓大門密碼是 井號 5821。"
+                    : "119緊急報案。患者為聽語障人士。目前在戶外，請根據 GPS 座標派車。";
+                
+                const twilioMsg = new SpeechSynthesisUtterance(twilioPayload);
+                twilioMsg.lang = 'zh-TW';
+                window.speechSynthesis.speak(twilioMsg);
+
+                document.getElementById('twilio-status').innerText = "Speaking to Operator";
+                document.getElementById('twilio-log').innerText = twilioPayload;
             }
         }
 
-        // Send and overwrite latest coordinates in the database
         async function syncToDatabase(lat, lng, accuracy, source) {
             const dbStatusElem = document.getElementById("db-status");
             const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-
             const payload = {
                 status: "ACTIVE_ALERT",
                 lastUpdated: new Date().toISOString(),
-                coordinates: {
-                    latitude: lat,
-                    longitude: lng,
-                    accuracyMeters: accuracy,
-                    source: source
-                },
+                coordinates: { latitude: lat, longitude: lng, accuracyMeters: accuracy, source: source },
+                tacticalContext: isHome ? { locationType: "INDOOR", floor: "4", gateAccessCode: "#5821" } : { locationType: "OUTDOOR" },
                 directionsUrl: navUrl
             };
-
             try {
-                const response = await fetch(FIREBASE_ENDPOINT, {
-                    method: "PUT", // PUT overwrites the single record permanently
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                if (response.ok) {
-                    dbStatusElem.innerText = "Cloud Sync: Updated";
-                } else {
-                    dbStatusElem.innerText = "Cloud Sync: Error";
-                }
-            } catch (err) {
-                console.warn("Database sync failed:", err);
-                dbStatusElem.innerText = "Cloud Sync: Offline";
-            }
+                const response = await fetch(FIREBASE_ENDPOINT, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                if (response.ok) dbStatusElem.innerText = "Cloud Sync: Updated";
+                else dbStatusElem.innerText = "Cloud Sync: Error";
+            } catch (err) { dbStatusElem.innerText = "Cloud Sync: Offline"; }
         }
 
         function trackLocation() {
             const coordsElem = document.getElementById("coords");
-
             if ("geolocation" in navigator) {
-                // watchPosition triggers continuously as your phone gets better accuracy or moves
                 navigator.geolocation.watchPosition(
                     (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lng = pos.coords.longitude;
-                        const acc = Math.round(pos.coords.accuracy);
-
-                        coordsElem.innerText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
-                        syncToDatabase(lat, lng, acc, "Live GPS");
+                        const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = Math.round(pos.coords.accuracy);
+                        if(isHome) {
+                            coordsElem.innerHTML = `Home Detected<br><span style="color:#fcd34d">Floor 4 | Gate Code: #5821</span>`;
+                            syncToDatabase(lat, lng, acc, "Pre-saved Home Profile");
+                        } else {
+                            coords.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
+                            syncToDatabase(lat, lng, acc, "Live Outdoor GPS");
+                        }
                     },
                     (err) => {
-                        console.warn("GPS Warning:", err.message);
                         coordsElem.innerText = "GPS unavailable, using fallback.";
                         syncToDatabase(FALLBACK_LAT, FALLBACK_LNG, 50, "Default Base Location");
                     },
                     { enableHighAccuracy: true, maximumAge: 0 }
                 );
-            } else {
-                coordsElem.innerText = "Geolocation not supported, using fallback.";
-                syncToDatabase(FALLBACK_LAT, FALLBACK_LNG, 50, "Default Base Location");
-            }
+            } else { coordsElem.innerText = "Geolocation not supported."; }
         }
 
+        document.getElementById("toggleEnv").addEventListener("click", (e) => {
+            isHome = !isHome;
+            e.target.innerText = isHome ? "Current Mode: Home (Gate Code)" : "Current Mode: Outside (Live GPS)";
+            trackLocation(); speakGroundingAnd119();
+        });
+
+        document.getElementById("btnHeadingOver").addEventListener("click", (e) => {
+            e.target.innerText = "✅ 已通知群組 (Group Notified)";
+            e.target.style.backgroundColor = "#059669"; e.target.style.borderColor = "#059669"; e.target.disabled = true;
+        });
+
         window.addEventListener("DOMContentLoaded", () => {
-            speakGrounding();
-            startHaptics();
-            trackLocation();
+            initiateWarningPhase(); // Starts the 5-second countdown immediately on load
         });
     </script>
 </body>
