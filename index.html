@@ -12,25 +12,36 @@
             height: 100vh; display: flex; flex-direction: column;
             justify-content: center; align-items: center; overflow: hidden;
             text-align: center; touch-action: manipulation;
+            cursor: pointer; /* Makes the whole screen feel clickable */
+        }
+
+        #breathing-canvas {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle, #0284c7 0%, #000000 75%);
+            opacity: 0.15; animation: breathe 8s infinite ease-in-out; pointer-events: none;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(0.8); opacity: 0.15; }
+            50% { transform: scale(1.4); opacity: 0.85; }
+        }
+
+        /* Initial Standby Text */
+        #standby-text {
+            z-index: 10; color: #64748b; font-size: 1.1rem; letter-spacing: 1px;
+            animation: pulseText 2s infinite; pointer-events: none;
+        }
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
 
         .container { z-index: 10; padding: 24px; width: 100%; max-width: 400px; display: none; }
         h1 { font-size: 1.9rem; font-weight: 600; margin-bottom: 12px; }
         p { font-size: 1.05rem; color: #94a3b8; margin-bottom: 8px; }
 
-        /* Start Button to bypass browser security */
-        #startScreen {
-            display: flex; flex-direction: column; align-items: center; gap: 20px;
-        }
-        #btnSimulateTrigger {
-            background-color: #dc2626; color: white; border: none; border-radius: 50px;
-            padding: 16px 32px; font-size: 1.2rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
-        }
-
         /* Minimalist Bottom Cancel Button */
         #cancelArea {
-            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20;
+            position: absolute; bottom: 40px; left: 0; width: 100%; text-align: center; z-index: 20; display: none;
         }
         #btnCancel {
             background: transparent; color: #64748b; font-size: 0.95rem; border: none;
@@ -65,11 +76,10 @@
 </head>
 <body>
 
-    <!-- Landing Screen -->
-    <div id="startScreen">
-        <p style="color:#64748b; font-size:0.9rem;">Web Prototype Simulator</p>
-        <button id="btnSimulateTrigger">Simulate Hardware Button Press</button>
-    </div>
+    <div id="breathing-canvas"></div>
+    
+    <!-- Clean Standby Text -->
+    <div id="standby-text">Tap anywhere to simulate hardware trigger</div>
 
     <!-- Main Alert Container -->
     <div class="container" id="mainAlert">
@@ -94,26 +104,30 @@
     </div>
 
     <!-- Cancel Option -->
-    <div id="cancelArea" style="display:none;">
+    <div id="cancelArea">
         <button id="btnCancel">誤觸取消 Cancel (<span id="cancelTimer">5</span>s)</button>
     </div>
 
     <script>
         const FIREBASE_ENDPOINT = "https://YOUR_FIREBASE_DATABASE_URL/latest_location.json";
-        const FALLBACK_LAT = 25.042309;
-        const FALLBACK_LNG = 121.5684554;
         
         let isHome = false; 
         let countdown = 5;
         let cancelInterval;
         let hapticInterval;
         let isCancelled = false;
+        let hasTriggered = false;
 
-        // START BUTTON Logic
-        document.getElementById("btnSimulateTrigger").addEventListener("click", () => {
-            document.getElementById("startScreen").style.display = "none";
+        // Make the whole screen a trigger to bypass browser security
+        document.body.addEventListener("click", (e) => {
+            // Prevent triggering again if already started, or if they are clicking the cancel/toggle buttons
+            if (hasTriggered || e.target.tagName === 'BUTTON') return;
+            
+            hasTriggered = true;
+            document.getElementById("standby-text").style.display = "none";
             document.getElementById("mainAlert").style.display = "block";
             document.getElementById("cancelArea").style.display = "block";
+            
             initiateWarningPhase();
         });
 
@@ -192,21 +206,6 @@
             }
         }
 
-        async function syncToDatabase(lat, lng, accuracy, source) {
-            const dbStatusElem = document.getElementById("db-status");
-            const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-            const payload = {
-                status: "ACTIVE_ALERT",
-                coordinates: { latitude: lat, longitude: lng, accuracyMeters: accuracy, source: source },
-                tacticalContext: isHome ? { locationType: "INDOOR", floor: "4", gateAccessCode: "#5821" } : { locationType: "OUTDOOR" }
-            };
-            try {
-                const response = await fetch(FIREBASE_ENDPOINT, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                if (response.ok) dbStatusElem.innerText = "Cloud Sync: Updated";
-                else dbStatusElem.innerText = "Cloud Sync: Error";
-            } catch (err) { dbStatusElem.innerText = "Cloud Sync: Offline"; }
-        }
-
         function trackLocation() {
             const coordsElem = document.getElementById("coords");
             if ("geolocation" in navigator) {
@@ -215,11 +214,10 @@
                         const lat = pos.coords.latitude; const lng = pos.coords.longitude; const acc = Math.round(pos.coords.accuracy);
                         if(isHome) {
                             coordsElem.innerHTML = `Home Detected<br><span style="color:#fcd34d">Floor 4 | Gate Code: #5821</span>`;
-                            syncToDatabase(lat, lng, acc, "Pre-saved Home Profile");
                         } else {
                             coordsElem.innerText = `Live GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${acc}m)`;
-                            syncToDatabase(lat, lng, acc, "Live Outdoor GPS");
                         }
+                        document.getElementById("db-status").innerText = "Cloud Sync: Updated";
                     },
                     (err) => {
                         coordsElem.innerText = "GPS unavailable, using fallback.";
